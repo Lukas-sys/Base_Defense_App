@@ -905,7 +905,7 @@ func _smoke_step(delta: float) -> void:
 			if smoke_time > 90.0:
 				var ok := total_sales > 0
 				ok = ok and veg_shop.sales > 0
-			print("%s Verkäufe=%d (Gemüse=%d) Geldstapel=%d Theke=%s Gemüse=%s Personal=%d" % ["SMOKE_TEST_OK" if ok else "SMOKE_TEST_FAIL", total_sales, veg_shop.sales, int(money_pile.amount), str(counter.stock), str(veg_shop.stock), helpers.size()])
+				print("%s Verkäufe=%d (Gemüse=%d) Geldstapel=%d Theke=%s Gemüse=%s Personal=%d" % ["SMOKE_TEST_OK" if ok else "SMOKE_TEST_FAIL", total_sales, veg_shop.sales, int(money_pile.amount), str(counter.stock), str(veg_shop.stock), helpers.size()])
 				Engine.time_scale = 1.0
 				get_tree().quit(0 if ok else 1)
 

@@ -78,9 +78,9 @@ func _gardener(delta: float) -> void:
 		if is_full():
 			state = State.DELIVER
 			return
-		var plant := Vector3.INF
+		var plant: Vector3 = Vector3.INF
 		for f in game.veg_fields():
-			var p := f.nearest_grown(position)
+			var p: Vector3 = f.nearest_grown(position)
 			if p != Vector3.INF and (plant == Vector3.INF or position.distance_squared_to(p) < position.distance_squared_to(plant)):
 				plant = p
 		if plant == Vector3.INF:

@@ -94,7 +94,7 @@ func _staffed() -> bool:
 func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
-	var max_queue := 5 + game.level("veg_customers")
+	var max_queue: int = 5 + game.level("veg_customers")
 	spawn_timer -= delta
 	if spawn_timer <= 0.0 and shoppers.size() < max_queue:
 		spawn_timer = 1.6 / (1.0 + 0.3 * game.level("veg_customers"))
