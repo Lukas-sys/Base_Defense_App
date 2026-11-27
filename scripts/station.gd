@@ -3,7 +3,7 @@ extends Node3D
 ## Eine Maschine, die Zutaten verarbeitet: z. B. Weizen -> Pizza (Ofen) oder Weizen -> Nudeln.
 ## Vorne wird abgegeben (Eingang), seitlich liegt das fertige Essen (Ausgang).
 
-const MAX_INPUT := 80
+const MAX_INPUT := 200  # Vorratslager: hier wartet man praktisch nie
 const MAX_OUTPUT := 40
 
 var game: Game

@@ -92,12 +92,14 @@ func _choose() -> Vector3:
 			return game.veg_shop.drop_zone
 	# 4. Weizen zur Maschine
 	if p.has_item("wheat"):
-		mode = "maschine"
 		var st := game.station_needing_input()
-		if st == null:
-			st = game.oven
-			_check_stuck(st.input_zone, true)
-		return st.input_zone
+		if st != null:
+			mode = "maschine"
+			return st.input_zone
+		if p.is_full():
+			mode = "maschine"
+			_check_stuck(game.oven.input_zone, true)
+			return game.oven.input_zone
 	# 5. Fertiges Essen abholen (solange kein Fließband)
 	var out := game.station_with_output()
 	if out != null and out.output_stock >= 3:
