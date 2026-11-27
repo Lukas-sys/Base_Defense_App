@@ -6,8 +6,9 @@ Hofküche ist ein 3D-Aufbauspiel fürs Handy (Hochformat). Es nimmt genau das Sp
 den Handy-Werbungen (Feld abernten, Maschinen füttern, Kunden bedienen, Geld auf Bodenfelder
 bringen) und macht daraus ein echtes Spiel: ohne Werbung, ohne Kaufen, ohne Pay-to-Win.
 
-> Das ist ein **spielbarer Prototyp**. Alles ist bewusst aus einfachen Formen gebaut.
-> Schöne Modelle, Sound und mehr Inhalte kommen später.
+> Das ist ein **spielbarer Prototyp**. Ofen, Herd, Theke, Autos und Deko sind fertige
+> 3D-Modelle (siehe „Grafik“ unten), Figuren, Feld und Bodenfelder sind im Code gebaut.
+> Sound und mehr Inhalte kommen später.
 
 ## So wird gespielt
 
@@ -20,7 +21,7 @@ bringen) und macht daraus ein echtes Spiel: ohne Werbung, ohne Kaufen, ohne Pay-
 5. **Ausbauen:** Stell dich auf ein **Bezahlfeld** auf dem Boden. Das Geld fließt hinein,
    und wenn es voll ist, wird das Upgrade gebaut.
 
-Der blaue Pfeil zeigt dir immer, was als Nächstes sinnvoll ist.
+Es gibt keine Hilfetexte: das Spiel erklärt sich durch die Rahmen am Boden von selbst.
 
 ### Was man freischalten kann
 
@@ -119,9 +120,15 @@ Alle Preise, Kosten und Stufen stehen gut lesbar oben in `scripts/main.gd` in de
 (Option `--smoke`). Die Figur erntet, alle Upgrades werden gekauft, und das Personal muss
 selbstständig Essen verkaufen. Klappt das nicht, ist der Lauf unter **Actions** rot.
 
+## Grafik
+
+Die fertigen 3D-Modelle stammen aus den kostenlosen **KayKit**-Paketen von Kay Lousberg
+(Restaurant Bits, City Builder Bits, Furniture Bits), Lizenz **CC0** (frei nutzbar, auch kommerziell).
+Sie liegen in `assets/kaykit/`. Der Workflow `.github/workflows/assets.yml` lädt sie bei Bedarf neu.
+
 ## Ideen für die nächsten Schritte
 
 - Weitere Produktketten pro Standort: Tomatenfeld → Soße, Kühe → Käse, Getränke …
 - Offline-Einnahmen: Personal arbeitet weiter, während das Spiel zu ist
 - Aufgaben und Erfolge, Kunden mit Sonderwünschen und Trinkgeld
-- Echte Low-Poly-Modelle, Sound, Musik, Partikel beim Ernten
+- Eigene Figuren-Modelle, Sound, Musik
