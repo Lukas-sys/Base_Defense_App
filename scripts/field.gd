@@ -7,7 +7,7 @@ const SPACING := 0.62
 const COLUMNS := 17
 const BASE_ROWS := 5
 const ROWS_PER_LEVEL := 3
-const REGROW_TIME := 9.0
+const REGROW_TIME := 5.5
 
 var game: Game
 var rows := BASE_ROWS
@@ -91,7 +91,7 @@ func harvest_near(carrier: Carrier) -> void:
 			grown_count -= 1
 			_set_plant(i, 0.08)
 			carrier.harvest_bits += 1
-			if carrier.harvest_bits >= 2:
+			if carrier.harvest_bits >= 1:
 				carrier.harvest_bits = 0
 				carrier.add_item("wheat")
 			if game != null:

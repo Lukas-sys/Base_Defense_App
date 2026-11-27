@@ -65,6 +65,13 @@ jobs:
           name: Bildschirmfotos
           path: screenshots/
 
+      - name: Versionsnummer setzen
+        run: |
+          # Jeder Lauf bekommt eine neue Nummer. Daran erkennt das Spiel auf dem Handy Updates.
+          echo "${{ github.run_number }}" > version.txt
+          sed -i 's/^version\/code=.*/version\/code=${{ github.run_number }}/; s/^version\/name=.*/version\/name="0.${{ github.run_number }}"/' export_presets.cfg
+          grep -n "version/" export_presets.cfg
+
       - name: Android-APK bauen
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
@@ -75,6 +82,21 @@ jobs:
           godot --headless --export-debug "Android" build/android/Hofkueche.apk
           ls -la build/android
           test -f build/android/Hofkueche.apk
+
+      - name: Update-Paket bauen (für Updates ohne neues APK)
+        run: |
+          mkdir -p build/update
+          godot --headless --export-pack "Android" build/update/hofkueche.pck
+          printf '{"version": %s, "min_apk": %s}\n' "${{ github.run_number }}" "$(cat min_apk.txt)" > build/update/version.json
+          cp build/android/Hofkueche.apk build/update/
+          ls -la build/update
+          test -f build/update/hofkueche.pck
+
+      - name: Update-Paket bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Update-Paket
+          path: build/update/
 
       - name: Windows-Version bauen
         run: |
@@ -106,3 +128,31 @@ jobs:
             echo ""
             echo "BILD_ENDE"
           done
+
+  release:
+    # Veröffentlicht jede neue Version als GitHub-Release. Das Spiel auf dem Handy
+    # schaut beim Start dort nach und lädt Updates selbst.
+    name: Neue Version veröffentlichen
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/claude/project-thread-m2u47w'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Update-Paket
+          path: update
+      - name: Release erstellen
+        run: |
+          gh release create "build-${{ github.run_number }}" update/* \
+            --target "${{ github.sha }}" --latest \
+            --title "Hofküche Version ${{ github.run_number }}" \
+            --notes "Automatisch gebaut. Auf dem Handy: Hofkueche.apk installieren, danach kommen Updates von selbst."
+      - name: Alte Releases aufräumen (die letzten 5 bleiben)
+        run: |
+          gh release list --limit 100 --json tagName,createdAt -q 'sort_by(.createdAt) | reverse | .[5:][].tagName' \
+            | xargs -r -n1 gh release delete --cleanup-tag -y

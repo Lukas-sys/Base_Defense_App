@@ -3,8 +3,8 @@ extends Node3D
 ## Die Theke: Essen wird hier abgelegt. Steht jemand an der Kasse, wird der vorderste
 ## Kunde bedient und das Geld landet auf dem Geldstapel.
 
-const SERVE_INTERVAL := 0.3
-const MAX_STOCK := 24
+const SERVE_INTERVAL := 0.12
+const MAX_STOCK := 40
 
 var game: Game
 var stock := {"pizza": 0, "pasta": 0}
@@ -37,12 +37,12 @@ func setup(g: Game) -> void:
 	for px in [-2.3, 2.3]:
 		add_child(Util.box(Vector3(0.12, 1.5, 0.12), Color(0.96, 0.96, 0.94), Vector3(px, 1.8, -0.8), 0.4))
 	var p := Pile.new()
-	p.setup("pizza", MAX_STOCK, 3)
+	p.setup("pizza", 24, 3)
 	p.position = Vector3(-1.9, 1.12, -0.2)
 	add_child(p)
 	piles["pizza"] = p
 	var q := Pile.new()
-	q.setup("pasta", MAX_STOCK, 3)
+	q.setup("pasta", 24, 3)
 	q.position = Vector3(0.6, 1.12, -0.2)
 	add_child(q)
 	piles["pasta"] = q

@@ -17,19 +17,19 @@ const FIELD_POS := Vector3(0, 0, 1.6)
 const MAP_X := 8.5
 
 const ITEM_NAMES := {"pizza": "Pizza", "pasta": "Nudeln"}
-const BASE_PRICE := {"pizza": 5.0, "pasta": 9.0}
+const BASE_PRICE := {"pizza": 6.0, "pasta": 11.0}
 
 ## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
 const UPGRADES := {
-	"capacity": {"title": "Größerer Korb", "max": 10, "base": 15.0, "growth": 1.55, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
+	"capacity": {"title": "Größerer Korb", "max": 10, "base": 12.0, "growth": 1.5, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
 	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
 	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
-	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 50.0, "growth": 1.7, "pos": Vector3(-6.8, 0, -1.8), "req": {"farmer": 1}},
-	"cashier": {"title": "Kassierer", "max": 1, "base": 160.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"farmer": 1}},
+	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 40.0, "growth": 1.6, "pos": Vector3(-6.8, 0, -1.8), "req": {"farmer": 1}},
+	"cashier": {"title": "Kassierer", "max": 1, "base": 120.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"farmer": 1}},
 	"waiter": {"title": "Kellner", "max": 3, "base": 220.0, "growth": 2.6, "pos": Vector3(6.9, 0, -8.4), "req": {"cashier": 1}},
-	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 140.0, "growth": 2.0, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
+	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 100.0, "growth": 1.9, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
 	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"waiter": 1}},
-	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 300.0, "growth": 1.7, "pos": Vector3(7.1, 0, 6.5), "req": {"pasta": 1}},
+	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 250.0, "growth": 1.6, "pos": Vector3(7.1, 0, 6.5), "req": {"pasta": 1}},
 	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
 	"mower": {"title": "Erntemaschine (breiter ernten)", "max": 3, "base": 250.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
 	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta": 1, "farmer": 3, "waiter": 2, "prices": 3}},
@@ -337,10 +337,11 @@ func station_with_output() -> Station:
 # ------------------------------------------------------------------ Kunden
 
 func _update_customers(delta: float) -> void:
-	var max_queue := 2 + level("customers")
+	# Autos kommen fast ununterbrochen: an der Theke soll immer jemand warten.
+	var max_queue := 4 + level("customers")
 	spawn_timer -= delta
 	if spawn_timer <= 0.0 and customers.size() < max_queue:
-		spawn_timer = 5.0 / (1.0 + 0.35 * level("customers"))
+		spawn_timer = 1.4 / (1.0 + 0.3 * level("customers"))
 		_spawn_customer()
 	for i in customers.size():
 		customers[i].target_x = COUNTER_POS.x - i * QUEUE_SPACING
@@ -351,7 +352,7 @@ func _update_customers(delta: float) -> void:
 
 func _spawn_customer() -> void:
 	var order := {}
-	var count := randi_range(1, 3 + level("customers") / 2)
+	var count := randi_range(2, 4 + level("customers"))
 	var kinds := ["pizza"]
 	if level("pasta") > 0:
 		kinds.append("pasta")
@@ -460,9 +461,9 @@ func _build_world() -> void:
 	add_child(field)
 
 	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.9, 0.38, 0.28))
-	oven.base_time = 1.6
+	oven.base_time = 0.9
 	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.98, 0.78, 0.25))
-	pasta_machine.base_time = 2.2
+	pasta_machine.base_time = 1.2
 
 	counter = Counter.new()
 	counter.position = COUNTER_POS

@@ -22,10 +22,10 @@ func _ready() -> void:
 	match role:
 		"farmer":
 			build_body(Color(0.45, 0.6, 0.3), Color(0.9, 0.8, 0.35))
-			speed = 3.6
+			speed = 4.6
 		"waiter":
 			build_body(Color(0.95, 0.95, 0.95), Color(0.2, 0.2, 0.25))
-			speed = 4.2
+			speed = 5.4
 			can_harvest = false
 		"cashier":
 			build_body(Color(0.85, 0.3, 0.3), Color(0.85, 0.3, 0.3))

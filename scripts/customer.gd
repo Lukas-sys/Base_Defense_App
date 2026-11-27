@@ -4,7 +4,7 @@ extends Node3D
 
 enum State { ARRIVING, WAITING, LEAVING }
 
-const SPEED := 7.0
+const SPEED := 12.0
 
 var game: Game
 var state := State.ARRIVING
