@@ -46,16 +46,16 @@ func setup(g: Game) -> void:
 	q.position = Vector3(0.6, 1.12, -0.2)
 	add_child(q)
 	piles["pasta"] = q
-	drop_zone = position + Vector3(-1.4, 0, 1.6)
-	cash_zone = position + Vector3(1.4, 0, 1.6)
+	drop_zone = position + Vector3(-0.3, 0, 1.6)
+	cash_zone = position + Vector3(1.8, 0, 1.6)
 	var dm := Util.zone_marker(Vector2(1.8, 1.4), Color(1, 1, 1))
-	dm.position = Vector3(-1.4, 0, 1.6)
+	dm.position = Vector3(-0.3, 0, 1.6)
 	add_child(dm)
 	var cm := Util.zone_marker(Vector2(1.8, 1.4), Color(0.45, 0.95, 0.35))
-	cm.position = Vector3(1.4, 0, 1.6)
+	cm.position = Vector3(1.8, 0, 1.6)
 	add_child(cm)
 	var cash_label := Util.floor_label("KASSE", 48, Color(0.45, 0.95, 0.35))
-	cash_label.position = Vector3(1.4, 0.05, 2.6)
+	cash_label.position = Vector3(1.8, 0.05, 2.6)
 	add_child(cash_label)
 
 

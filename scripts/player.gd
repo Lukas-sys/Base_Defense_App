@@ -5,7 +5,7 @@ extends Carrier
 
 func _ready() -> void:
 	build_body(Color(0.85, 0.5, 0.45), Color(0.35, 0.65, 0.85))
-	speed = 7.0
+	speed = 8.0
 
 
 func _process(delta: float) -> void:

@@ -13,6 +13,10 @@ var fill: MeshInstance3D
 var title_label: Label3D
 var cost_label: Label3D
 var pay_timer := 0.0
+var wait := 0.0
+
+## So lange muss man stehen bleiben, bevor Geld fließt (kein Geldverlust beim Drüberlaufen).
+const WAIT_TIME := 0.6
 
 
 func setup(g: Game, id: String) -> void:
@@ -57,8 +61,19 @@ func contains(p: Vector3) -> bool:
 
 
 ## Wird aufgerufen, solange der Spieler auf dem Feld steht.
+func reset_wait() -> void:
+	if wait > 0.0:
+		wait = 0.0
+		scale = Vector3.ONE
+
+
 func pay_step(delta: float) -> void:
 	if game.money <= 0.0:
+		return
+	if wait < WAIT_TIME:
+		wait += delta
+		# kleines Einsinken zeigt: gleich geht's los
+		scale = Vector3.ONE * lerpf(1.0, 0.94, clampf(wait / WAIT_TIME, 0.0, 1.0))
 		return
 	# In etwa 1,5 Sekunden komplett bezahlen, egal wie teuer.
 	var rate := maxf(cost / 1.5, 10.0)

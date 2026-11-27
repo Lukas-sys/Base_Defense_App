@@ -23,16 +23,17 @@ const BASE_PRICE := {"pizza": 6.0, "pasta": 11.0}
 const UPGRADES := {
 	"capacity": {"title": "Größerer Korb", "max": 10, "base": 12.0, "growth": 1.5, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
 	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
-	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
-	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 40.0, "growth": 1.6, "pos": Vector3(-6.8, 0, -1.8), "req": {"farmer": 1}},
-	"cashier": {"title": "Kassierer", "max": 1, "base": 120.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"farmer": 1}},
-	"waiter": {"title": "Kellner", "max": 3, "base": 220.0, "growth": 2.6, "pos": Vector3(6.9, 0, -8.4), "req": {"cashier": 1}},
+	"harvester": {"title": "Erntemaschine", "max": 3, "base": 90.0, "growth": 2.6, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
+	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 40.0, "growth": 1.6, "pos": Vector3(-6.8, 0, -1.8), "req": {"harvester": 1}},
+	"cashier": {"title": "Kassierer", "max": 1, "base": 120.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"harvester": 1}},
+	"pizza_belt": {"title": "Fließband Pizza", "max": 1, "base": 220.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"cashier": 1}},
 	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 100.0, "growth": 1.9, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
-	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"waiter": 1}},
+	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 500.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"pizza_belt": 1}},
+	"pasta_belt": {"title": "Fließband Nudeln", "max": 1, "base": 700.0, "growth": 1.0, "pos": Vector3(7.0, 0, -7.6), "req": {"pasta": 1}},
 	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 250.0, "growth": 1.6, "pos": Vector3(7.1, 0, 6.5), "req": {"pasta": 1}},
 	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
-	"mower": {"title": "Erntemaschine (breiter ernten)", "max": 3, "base": 250.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
-	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta": 1, "farmer": 3, "waiter": 2, "prices": 3}},
+	"mower": {"title": "Sense (breiter ernten)", "max": 3, "base": 200.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
+	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta_belt": 1, "harvester": 3, "prices": 3}},
 }
 
 var money := 0.0
@@ -57,6 +58,9 @@ var spawn_timer := 1.0
 var save_timer := 0.0
 var autopilot_input := Vector2.ZERO
 var fence: Node3D
+var belts := {}
+
+const ConveyorScript := preload("res://scripts/conveyor.gd")
 
 var smoke_test := false
 var screenshot_dir := ""
@@ -105,7 +109,7 @@ func _notification(what: int) -> void:
 
 func _process(delta: float) -> void:
 	camera.position = camera.position.lerp(player.position + _camera_offset(), 1.0 - exp(-6.0 * delta))
-	player.capacity = 4 + 2 * level("capacity")
+	player.capacity = 6 + 3 * level("capacity")
 	player.harvest_radius = 0.9 + 0.55 * level("mower")
 	_carrier_interact(player, delta)
 	for h in helpers:
@@ -145,8 +149,12 @@ func price(kind: String) -> float:
 	return BASE_PRICE[kind] * (1.0 + 0.25 * level("prices")) * income_multiplier()
 
 
-func helper_capacity() -> int:
-	return 3 + level("capacity") / 2
+func harvester_capacity() -> int:
+	return 12 + 2 * level("harvester")
+
+
+func harvester_speed() -> float:
+	return 4.5 + 0.5 * level("harvester")
 
 
 func upgrade_cost(id: String) -> float:
@@ -184,12 +192,14 @@ func buy_upgrade(id: String) -> void:
 		"field":
 			field.set_level(level("field"))
 			_build_fence()
-		"farmer":
-			_spawn_helper("farmer")
+		"harvester":
+			_spawn_helper("harvester")
 		"cashier":
 			_spawn_helper("cashier")
-		"waiter":
-			_spawn_helper("waiter")
+		"pizza_belt":
+			_build_belt("pizza")
+		"pasta_belt":
+			_build_belt("pasta")
 		"pasta":
 			pasta_machine.visible = true
 			pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT
@@ -231,10 +241,12 @@ func _refresh_tiles() -> void:
 func _apply_levels() -> void:
 	field.set_level(level("field"))
 	_build_fence()
-	for i in level("farmer"):
-		_spawn_helper("farmer")
-	for i in level("waiter"):
-		_spawn_helper("waiter")
+	for i in level("harvester"):
+		_spawn_helper("harvester")
+	if level("pizza_belt") > 0:
+		_build_belt("pizza")
+	if level("pasta_belt") > 0:
+		_build_belt("pasta")
 	for i in level("cashier"):
 		_spawn_helper("cashier")
 	var has_pasta := level("pasta") > 0
@@ -246,10 +258,8 @@ func _spawn_helper(role: String) -> void:
 	var h := Helper.new()
 	h.setup_role(self, role)
 	match role:
-		"farmer":
-			h.position = Vector3(randf_range(-3, 3), 0, 0.5)
-		"waiter":
-			h.position = Vector3(randf_range(-1.0, 1.0), 0, -5.5)
+		"harvester":
+			h.position = Vector3(randf_range(-3, 3), 0, FIELD_POS.z + 1.0)
 		"cashier":
 			h.position = counter.cash_zone
 	add_child(h)
@@ -270,18 +280,17 @@ func _carrier_interact(c: Carrier, delta: float) -> void:
 	c.transfer_timer -= delta
 	if c.transfer_timer > 0.0:
 		return
-	var is_farmer := c is Helper and (c as Helper).role == "farmer"
-	var is_waiter := c is Helper and (c as Helper).role == "waiter"
+	var is_machine := c is Helper and (c as Helper).role == "harvester"
 	for st in stations:
 		if not st.visible:
 			continue
-		if not is_waiter and _in_zone(c.position, st.input_zone, Vector2(0.9, 0.8)) and c.has_item(st.input_kind) and st.wants_input():
+		if _in_zone(c.position, st.input_zone, Vector2(0.9, 0.8)) and c.has_item(st.input_kind) and st.wants_input():
 			c.take_item(st.input_kind)
 			fly_item(st.input_kind, c.position + Vector3(0, 1.0, 0), st.input_pile.global_position + Vector3(0, 0.4, 0))
 			st.put_input()
 			c.transfer_timer = Carrier.TRANSFER_INTERVAL
 			return
-		if not is_farmer and _in_zone(c.position, st.output_zone, Vector2(0.9, 0.8)) and not c.is_full() and st.output_stock > 0:
+		if not is_machine and st.belt == null and _in_zone(c.position, st.output_zone, Vector2(0.9, 0.8)) and not c.is_full() and st.output_stock > 0:
 			st.take_output()
 			fly_item(st.output_kind, st.output_pile.global_position + Vector3(0, 0.3, 0), c.position + Vector3(0, 1.0, 0))
 			c.add_item(st.output_kind)
@@ -305,9 +314,10 @@ func _player_only(delta: float) -> void:
 	var standing_on: PayTile = null
 	for id in tiles:
 		var t: PayTile = tiles[id]
-		if t.contains(player.position):
+		if standing_on == null and t.contains(player.position):
 			standing_on = t
-			break
+		else:
+			t.reset_wait()
 	if standing_on != null:
 		standing_on.pay_step(delta)
 
@@ -461,9 +471,9 @@ func _build_world() -> void:
 	add_child(field)
 
 	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.9, 0.38, 0.28))
-	oven.base_time = 0.9
+	oven.base_time = 0.6
 	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.98, 0.78, 0.25))
-	pasta_machine.base_time = 1.2
+	pasta_machine.base_time = 0.8
 
 	counter = Counter.new()
 	counter.position = COUNTER_POS
@@ -471,7 +481,7 @@ func _build_world() -> void:
 	counter.setup(self)
 
 	money_pile = MoneyPile.new()
-	money_pile.position = Vector3(4.4, 0, -8.6)
+	money_pile.position = Vector3(3.9, 0, -7.4)
 	add_child(money_pile)
 
 
@@ -594,6 +604,23 @@ func fly_item(kind: String, from: Vector3, to: Vector3) -> void:
 	t.tween_callback(it.queue_free)
 
 
+## Fließband von der Maschine zur Theke (ersetzt das Abholen per Hand).
+func _build_belt(kind: String) -> void:
+	if belts.has(kind):
+		return
+	var st := oven if kind == "pizza" else pasta_machine
+	var path := PackedVector3Array()
+	if kind == "pizza":
+		path = PackedVector3Array([Vector3(-1.5, 0.8, -5.0), Vector3(-1.5, 1.18, -9.75)])
+	else:
+		path = PackedVector3Array([Vector3(5.5, 0.8, -5.0), Vector3(5.5, 1.18, -10.1), Vector3(2.6, 1.18, -10.1)])
+	var b = ConveyorScript.new()
+	add_child(b)
+	b.setup(self, kind, path)
+	st.attach_belt(b)
+	belts[kind] = b
+
+
 func _make_station(id: String, out_kind: String, pos: Vector3, color: Color) -> Station:
 	var st := Station.new()
 	st.position = pos
@@ -664,6 +691,15 @@ func _load_game() -> void:
 	money = float(data.get("money", 0.0))
 	stars = int(data.get("stars", 0))
 	levels = data.get("levels", {})
+	# Alte Spielstände: Erntehelfer -> Erntemaschine, Kellner -> Fließband
+	if levels.has("farmer"):
+		levels["harvester"] = mini(3, int(levels["farmer"]))
+		levels.erase("farmer")
+	if levels.has("waiter"):
+		levels["pizza_belt"] = 1
+		if int(levels.get("pasta", 0)) > 0 and int(levels["waiter"]) > 1:
+			levels["pasta_belt"] = 1
+		levels.erase("waiter")
 	tile_paid = data.get("tile_paid", {})
 	total_sales = int(data.get("sales", 0))
 
@@ -715,7 +751,7 @@ func _screenshot_step(delta: float) -> void:
 		_save_shot("1_start")
 		money = 1000000.0
 		for _r in 3:
-			for id in ["capacity", "field", "farmer", "cashier", "waiter", "pasta", "customers"]:
+			for id in ["capacity", "field", "harvester", "cashier", "pizza_belt", "pasta", "pasta_belt", "customers"]:
 				if _is_unlocked(id):
 					buy_upgrade(id)
 		money = 870.0

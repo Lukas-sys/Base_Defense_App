@@ -23,6 +23,8 @@ var progress_item: Node3D
 var body: Node3D
 var steam: CPUParticles3D
 var pulse := 0.0
+var out_marker: Node3D
+var belt = null  # Fließband zur Theke, wenn gekauft
 
 
 func setup(g: Game, station_id: String, out_kind: String, color: Color) -> void:
@@ -92,7 +94,7 @@ func setup(g: Game, station_id: String, out_kind: String, color: Color) -> void:
 	var in_marker := Util.zone_marker(Vector2(1.8, 1.6), Color(1, 1, 1, 1))
 	in_marker.position = Vector3(0, 0, 2.1)
 	add_child(in_marker)
-	var out_marker := Util.zone_marker(Vector2(1.8, 1.6), Color(0.45, 0.95, 0.35))
+	out_marker = Util.zone_marker(Vector2(1.8, 1.6), Color(0.45, 0.95, 0.35))
 	out_marker.position = Vector3(3.6, 0, 2.1)
 	add_child(out_marker)
 	input_pile = Pile.new()
@@ -131,6 +133,17 @@ func _process(delta: float) -> void:
 		progress_item.visible = false
 		steam.emitting = false
 		body.scale = Vector3.ONE
+	if belt != null and output_stock > 0 and belt.has_room():
+		output_stock -= 1
+		belt.push()
+		_refresh()
+
+
+## Mit Fließband gibt es kein Abholfeld mehr: alles fährt direkt zur Theke.
+func attach_belt(b) -> void:
+	belt = b
+	out_marker.visible = false
+	output_pile.visible = false
 
 
 func put_input() -> void:

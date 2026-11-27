@@ -3,7 +3,7 @@ extends Node3D
 ## Grundlage für alle Figuren, die Dinge tragen können (Spieler und Personal).
 ## Getragene Gegenstände stapeln sich sichtbar vor der Figur.
 
-const TRANSFER_INTERVAL := 0.08
+const TRANSFER_INTERVAL := 0.05
 
 var game: Game
 var stack: Array[String] = []
@@ -20,6 +20,9 @@ var hand_r: Node3D
 var moving := false
 var stack_root: Node3D
 var walk_time := 0.0
+var is_machine := false  # Maschinen wippen nicht beim Fahren
+var stack_columns := 1
+var stack_spacing := 0.5
 
 
 func setup(g: Game) -> void:
@@ -97,6 +100,9 @@ func walk(dir: Vector3, delta: float) -> void:
 	_turn_towards(dir, delta)
 	walk_time += delta
 	moving = true
+	if is_machine:
+		body_root.position.y = absf(sin(walk_time * 20.0)) * 0.03
+		return
 	var bob := absf(sin(walk_time * 12.0))
 	body_root.position.y = bob * 0.1
 	body_root.scale = Vector3(1.0 + (1.0 - bob) * 0.05, 1.0 - (1.0 - bob) * 0.05, 1.0)
@@ -119,6 +125,9 @@ func walk_to(target: Vector3, reach: float, delta: float) -> bool:
 func _idle_pose(delta: float) -> void:
 	moving = false
 	var k := 1.0 - exp(-10.0 * delta)
+	if is_machine:
+		body_root.position.y = lerpf(body_root.position.y, 0.0, k)
+		return
 	body_root.position.y = lerpf(body_root.position.y, 0.0, k)
 	body_root.scale = body_root.scale.lerp(Vector3.ONE, k)
 	hand_l.position.z = lerpf(hand_l.position.z, -0.1, k)
@@ -136,13 +145,17 @@ func _refresh_stack() -> void:
 	var old := stack_root.get_child_count()
 	for child in stack_root.get_children():
 		child.queue_free()
-	var y := 0.0
+	var heights: Array[float] = []
+	heights.resize(stack_columns)
+	heights.fill(0.0)
 	var i := 0
 	for kind in stack:
 		var it := Util.item(kind)
-		it.position = Vector3(0, y, 0)
+		var col := i % stack_columns
+		var x := (col - (stack_columns - 1) * 0.5) * stack_spacing
+		it.position = Vector3(x, heights[col], 0)
 		stack_root.add_child(it)
-		y += Util.item_height(kind)
+		heights[col] += Util.item_height(kind)
 		if i >= old:
 			it.scale = Vector3.ONE * 0.3
 			var t := it.create_tween()
