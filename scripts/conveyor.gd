@@ -54,7 +54,7 @@ func _build_segment(a: Vector3, b: Vector3, last: bool) -> void:
 		if p.y < 0.3:
 			continue
 		for side in [-0.3, 0.3]:
-			var off := seg.basis.x * side
+			var off: Vector3 = seg.basis.x * side
 			add_child(Util.box(Vector3(0.1, p.y - 0.1, 0.1), Color(0.4, 0.42, 0.46), Vector3(p.x + off.x, (p.y - 0.1) * 0.5, p.z + off.z), 0.3))
 
 
