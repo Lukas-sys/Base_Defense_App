@@ -39,7 +39,6 @@ var money := 0.0
 var stars := 0
 var levels := {}
 var tile_paid := {}
-var tutorial_step := 0
 var total_sales := 0
 
 var player: Player
@@ -54,7 +53,6 @@ var pasta_machine: Station
 var helpers: Array[Helper] = []
 var customers: Array[Customer] = []
 var tiles := {}
-var arrow: Node3D
 var spawn_timer := 1.0
 var save_timer := 0.0
 var autopilot_input := Vector2.ZERO
@@ -114,8 +112,6 @@ func _process(delta: float) -> void:
 		_carrier_interact(h, delta)
 	_player_only(delta)
 	_update_customers(delta)
-	_update_tutorial()
-	_update_arrow()
 	save_timer += delta
 	if save_timer > 10.0:
 		save_timer = 0.0
@@ -182,34 +178,21 @@ func _is_unlocked(id: String) -> bool:
 
 func buy_upgrade(id: String) -> void:
 	levels[id] = level(id) + 1
+	if tiles.has(id):
+		celebrate(tiles[id].position)
 	match id:
-		"capacity":
-			hud.show_message("Du kannst jetzt mehr tragen!")
 		"field":
 			field.set_level(level("field"))
 			_build_fence()
-			hud.show_message("Das Feld ist gewachsen!")
 		"farmer":
 			_spawn_helper("farmer")
-			hud.show_message("Ein Erntehelfer arbeitet jetzt für dich!")
 		"cashier":
 			_spawn_helper("cashier")
-			hud.show_message("Der Kassierer bedient jetzt die Kunden!")
 		"waiter":
 			_spawn_helper("waiter")
-			hud.show_message("Ein Kellner bringt das Essen zur Theke!")
 		"pasta":
 			pasta_machine.visible = true
 			pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT
-			hud.show_message("Nudelmaschine gebaut! Kunden bestellen jetzt auch Nudeln.")
-		"oven_speed", "pasta_speed":
-			hud.show_message("Die Maschine arbeitet schneller!")
-		"customers":
-			hud.show_message("Mehr Kunden kommen vorbei!")
-		"prices":
-			hud.show_message("Bessere Zutaten: Kunden zahlen mehr!")
-		"mower":
-			hud.show_message("Du erntest jetzt breiter!")
 		"new_location":
 			_move_to_new_location()
 			return
@@ -391,85 +374,6 @@ func on_customer_paid(c: Customer) -> void:
 	c.leave()
 
 
-# ------------------------------------------------------- Anleitung & Pfeil
-
-func goal_text() -> String:
-	match tutorial_step:
-		0:
-			return "Lauf durchs Weizenfeld, um zu ernten"
-		1:
-			return "Bring den Weizen zum Ofen (weißer Rahmen)"
-		2:
-			return "Hol die fertigen Pizzen ab (grüner Rahmen)"
-		3:
-			return "Leg die Pizzen auf die Theke"
-		4:
-			return "Stell dich an die Kasse und bediene die Kunden"
-		5:
-			return "Sammle dein Geld ein"
-		6:
-			return "Stell dich auf das Bezahlfeld, um es zu kaufen"
-	return ""
-
-
-func _update_tutorial() -> void:
-	var done := false
-	match tutorial_step:
-		0:
-			done = player.has_item("wheat")
-		1:
-			done = oven.input_stock > 0 or oven.output_stock > 0
-		2:
-			done = player.has_item("pizza")
-		3:
-			done = counter.stock["pizza"] > 0
-		4:
-			done = money_pile.amount > 0.0
-		5:
-			done = money > 0.0
-		6:
-			done = level("capacity") > 0
-	if done:
-		tutorial_step += 1
-
-
-func _arrow_target() -> Vector3:
-	match tutorial_step:
-		0:
-			return field.nearest_grown(player.position)
-		1:
-			return oven.input_zone
-		2:
-			return oven.output_zone
-		3:
-			return counter.drop_zone
-		4:
-			return counter.cash_zone
-		5:
-			return money_pile.position
-		6:
-			return UPGRADES["capacity"]["pos"]
-	# Danach: auf das günstigste bezahlbare Feld zeigen
-	if money_pile.amount > 0.0 and money < 1.0:
-		return money_pile.position
-	var best := Vector3.INF
-	var best_cost := INF
-	for id in tiles:
-		var t: PayTile = tiles[id]
-		var left := t.cost - t.paid
-		if left <= money and left < best_cost:
-			best_cost = left
-			best = t.position
-	return best
-
-
-func _update_arrow() -> void:
-	var target := _arrow_target()
-	arrow.visible = target != Vector3.INF
-	if arrow.visible:
-		arrow.position = target + Vector3(0, 2.2 + absf(sin(Time.get_ticks_msec() * 0.005)) * 0.5, 0)
-
-
 # --------------------------------------------------------------- Welt-Aufbau
 
 const GRASS_COLORS := [Color(0.55, 0.72, 0.4), Color(0.66, 0.64, 0.36), Color(0.44, 0.66, 0.55), Color(0.7, 0.56, 0.42)]
@@ -567,18 +471,6 @@ func _build_world() -> void:
 	money_pile.position = Vector3(4.4, 0, -8.6)
 	add_child(money_pile)
 
-	arrow = Node3D.new()
-	var arrow_color := Color(0.35, 0.7, 1.0)
-	arrow.add_child(Util.box(Vector3(0.42, 0.7, 0.42), arrow_color, Vector3(0, 0.95, 0), 0.4))
-	var head := MeshInstance3D.new()
-	var prism := PrismMesh.new()
-	prism.size = Vector3(1.1, 0.75, 0.45)
-	head.mesh = prism
-	head.material_override = Util.mat(arrow_color)
-	head.rotation_degrees = Vector3(0, 0, 180)
-	head.position = Vector3(0, 0.3, 0)
-	arrow.add_child(head)
-	add_child(arrow)
 
 
 func _add_tree(p: Vector3) -> void:
@@ -636,6 +528,32 @@ func on_harvest(where: Vector3) -> void:
 	add_child(p)
 	p.emitting = true
 	get_tree().create_timer(1.0).timeout.connect(p.queue_free)
+
+
+## Konfetti, wenn etwas gekauft wurde.
+func celebrate(where: Vector3) -> void:
+	var colors := [Color(1.0, 0.85, 0.3), Color(0.45, 0.85, 0.4), Color(0.4, 0.7, 1.0), Color(1.0, 0.45, 0.45)]
+	for c in colors:
+		var p := CPUParticles3D.new()
+		p.one_shot = true
+		p.amount = 10
+		p.lifetime = 1.1
+		p.explosiveness = 1.0
+		p.direction = Vector3.UP
+		p.spread = 50.0
+		p.initial_velocity_min = 5.0
+		p.initial_velocity_max = 8.0
+		p.gravity = Vector3(0, -12, 0)
+		p.angular_velocity_min = -360.0
+		p.angular_velocity_max = 360.0
+		var m := BoxMesh.new()
+		m.size = Vector3(0.14, 0.03, 0.09)
+		p.mesh = m
+		p.material_override = Util.mat(c)
+		p.position = where + Vector3(0, 0.3, 0)
+		add_child(p)
+		p.emitting = true
+		get_tree().create_timer(1.5).timeout.connect(p.queue_free)
 
 
 ## Lässt einen Gegenstand im Bogen von a nach b fliegen (nur Optik).
@@ -705,7 +623,6 @@ func save_game() -> void:
 		"stars": stars,
 		"levels": levels,
 		"tile_paid": tile_paid,
-		"tutorial": tutorial_step,
 		"sales": total_sales,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -724,7 +641,6 @@ func _load_game() -> void:
 	stars = int(data.get("stars", 0))
 	levels = data.get("levels", {})
 	tile_paid = data.get("tile_paid", {})
-	tutorial_step = int(data.get("tutorial", 0))
 	total_sales = int(data.get("sales", 0))
 
 

@@ -6,8 +6,6 @@ var game: Game
 var joystick: Joystick
 var money_label: Label
 var bonus_label: Label
-var goal_label: Label
-var goal_panel: PanelContainer
 var shown_money := 0.0
 var message_label: Label
 var message_time := 0.0
@@ -71,19 +69,6 @@ func _ready() -> void:
 	root.add_child(bonus_label)
 
 	# Aktuelle Aufgabe
-	goal_panel = PanelContainer.new()
-	goal_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	goal_panel.offset_left = -300
-	goal_panel.offset_right = 300
-	goal_panel.offset_top = 128
-	goal_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	goal_panel.add_theme_stylebox_override("panel", _pill(Color(1, 1, 1, 0.92)))
-	root.add_child(goal_panel)
-	goal_label = _label(28, Color(0.22, 0.2, 0.24))
-	goal_label.add_theme_constant_override("outline_size", 0)
-	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	goal_panel.add_child(goal_label)
 
 	# Meldungen
 	message_label = _label(36, Color(1.0, 0.95, 0.55))
@@ -117,10 +102,8 @@ func _process(delta: float) -> void:
 	if absf(shown_money - game.money) < 1.0:
 		shown_money = game.money
 	money_label.text = Util.money_text(floor(shown_money))
-	bonus_label.text = "Standort %d\nEinnahmen x%s" % [game.stars + 1, str(game.income_multiplier())]
-	var goal := game.goal_text()
-	goal_panel.visible = goal != ""
-	goal_label.text = goal
+	bonus_label.visible = game.stars > 0
+	bonus_label.text = "Standort %d  ·  x%s" % [game.stars + 1, str(game.income_multiplier())]
 	if message_time > 0.0:
 		message_time -= delta
 		message_label.modulate.a = clampf(message_time, 0.0, 1.0)
