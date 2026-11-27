@@ -452,6 +452,8 @@ func _build_world() -> void:
 	for i in 10:
 		_add_bush(Vector3(randf_range(-16, 16), 0, randf_range(-18.0, -15.5)))
 
+	_add_decor()
+
 	field = Field.new()
 	field.game = self
 	field.position = FIELD_POS
@@ -471,6 +473,27 @@ func _build_world() -> void:
 	money_pile.position = Vector3(4.4, 0, -8.6)
 	add_child(money_pile)
 
+
+
+## Fertige Modelle als Deko: Küchengeräte, Kisten, Tisch, Straßenlaternen.
+func _add_decor() -> void:
+	Models.add(self, "restaurant-bits/fridge_A", 0.85, Vector3(-8.6, 0.03, -10.6))
+	Models.add(self, "restaurant-bits/kitchencounter_straight_A_decorated", 0.85, Vector3(-6.9, 0.03, -10.7))
+	Models.add(self, "restaurant-bits/crate_tomatoes", 0.5, Vector3(-8.7, 0.03, -7.4))
+	Models.add(self, "restaurant-bits/crate_cheese", 0.5, Vector3(-8.7, 0.03, -6.3))
+	Models.add(self, "restaurant-bits/crate_onions", 0.5, Vector3(-7.7, 0.03, -7.4))
+	Models.add(self, "restaurant-bits/table_round_A_decorated", 0.75, Vector3(7.9, 0.03, -4.6))
+	Models.add(self, "restaurant-bits/chair_A", 0.75, Vector3(7.9, 0.03, -3.3), 180.0)
+	Models.add(self, "restaurant-bits/chair_A", 0.75, Vector3(6.6, 0.03, -4.6), 90.0)
+	Models.add(self, "restaurant-bits/shelf_papertowel_decorated", 0.8, Vector3(8.4, 0.75, -11.2))
+	for x in [-10.5, 10.5]:
+		Models.add(self, "city-builder-bits/streetlight", 3.4, Vector3(x, 0, ROAD_Z + 2.3), 0.0 if x < 0 else 180.0)
+	Models.add(self, "city-builder-bits/bench", 3.2, Vector3(-13.0, 0, ROAD_Z + 2.4))
+	Models.add(self, "city-builder-bits/firehydrant", 3.0, Vector3(12.5, 0, ROAD_Z + 2.2))
+	Models.add(self, "city-builder-bits/trash_A", 3.0, Vector3(-11.6, 0, ROAD_Z + 2.4))
+	for i in 10:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		Models.add(self, "city-builder-bits/bush", randf_range(3.0, 4.5), Vector3(side * randf_range(10.5, 12.0), 0, randf_range(0.0, 14.0)), randf() * 360.0)
 
 
 func _add_tree(p: Vector3) -> void:

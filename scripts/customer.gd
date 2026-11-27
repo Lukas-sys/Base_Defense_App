@@ -25,24 +25,11 @@ func setup(g: Game, wanted: Dictionary) -> void:
 func _ready() -> void:
 	var colors := [Color(0.3, 0.6, 0.95), Color(0.98, 0.55, 0.25), Color(0.98, 0.82, 0.3), Color(0.62, 0.45, 0.88), Color(0.95, 0.4, 0.45), Color(0.35, 0.8, 0.6)]
 	var c: Color = colors[randi() % colors.size()]
-	var glass := Color(0.72, 0.88, 0.98)
 	car = Node3D.new()
 	add_child(car)
-	car.add_child(Util.box(Vector3(2.7, 0.62, 1.45), c, Vector3(0, 0.6, 0), 0.5))
-	car.add_child(Util.box(Vector3(1.6, 0.62, 1.32), c.lightened(0.1), Vector3(-0.2, 1.15, 0), 0.4))
-	car.add_child(Util.box(Vector3(1.66, 0.42, 1.2), glass, Vector3(-0.2, 1.13, 0), 0.3))
-	car.add_child(Util.box(Vector3(1.4, 0.42, 1.36), glass, Vector3(-0.2, 1.13, 0), 0.3))
-	car.add_child(Util.box(Vector3(1.66, 0.1, 1.34), c.lightened(0.1), Vector3(-0.2, 1.45, 0), 0.5))
-	car.add_child(Util.box(Vector3(0.06, 0.16, 0.3), Color(1.0, 0.97, 0.8), Vector3(1.36, 0.68, 0.45), 0.4))
-	car.add_child(Util.box(Vector3(0.06, 0.16, 0.3), Color(1.0, 0.97, 0.8), Vector3(1.36, 0.68, -0.45), 0.4))
-	for x in [-0.85, 0.85]:
-		for z in [-0.72, 0.72]:
-			var wheel := Util.cylinder(0.3, 0.3, 0.22, Color(0.15, 0.15, 0.17), Vector3(x, 0.3, z))
-			wheel.rotation_degrees = Vector3(90, 0, 0)
-			car.add_child(wheel)
-			var hub := Util.cylinder(0.13, 0.13, 0.24, Color(0.85, 0.85, 0.88), Vector3(x, 0.3, z))
-			hub.rotation_degrees = Vector3(90, 0, 0)
-			car.add_child(hub)
+	var models := ["car_sedan", "car_hatchback", "car_stationwagon", "car_taxi"]
+	if not Models.add(car, "city-builder-bits/" + models[randi() % models.size()], 3.2, Vector3(0, 0.18, 0), 90.0):
+		_build_simple_car(c)
 	bubble_bg = Sprite3D.new()
 	bubble_bg.texture = Util.bubble_texture()
 	bubble_bg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -57,6 +44,18 @@ func _ready() -> void:
 	bubble.position = Vector3(0, 2.6, 0)
 	add_child(bubble)
 	_update_bubble()
+
+
+func _build_simple_car(c: Color) -> void:
+	var glass := Color(0.72, 0.88, 0.98)
+	car.add_child(Util.box(Vector3(2.7, 0.62, 1.45), c, Vector3(0, 0.6, 0), 0.5))
+	car.add_child(Util.box(Vector3(1.6, 0.62, 1.32), c.lightened(0.1), Vector3(-0.2, 1.15, 0), 0.4))
+	car.add_child(Util.box(Vector3(1.66, 0.42, 1.2), glass, Vector3(-0.2, 1.13, 0), 0.3))
+	for x in [-0.85, 0.85]:
+		for z in [-0.72, 0.72]:
+			var wheel := Util.cylinder(0.3, 0.3, 0.22, Color(0.15, 0.15, 0.17), Vector3(x, 0.3, z))
+			wheel.rotation_degrees = Vector3(90, 0, 0)
+			car.add_child(wheel)
 
 
 func _process(delta: float) -> void:

@@ -31,19 +31,24 @@ func setup(g: Game, station_id: String, out_kind: String, color: Color) -> void:
 	output_kind = out_kind
 	body = Node3D.new()
 	add_child(body)
-	# Maschine: Gehäuse, farbige Front, Trichter oben, Schornstein
-	var steel := Color(0.88, 0.9, 0.93)
-	body.add_child(Util.box(Vector3(2.0, 1.25, 1.8), steel, Vector3(0, 0.625, 0)))
-	body.add_child(Util.box(Vector3(2.08, 0.28, 1.88), color, Vector3(0, 1.3, 0)))
-	body.add_child(Util.box(Vector3(1.3, 0.55, 0.08), color.darkened(0.15), Vector3(0, 0.62, 0.9), 0.4))
-	body.add_child(Util.box(Vector3(0.9, 0.3, 0.06), Color(0.25, 0.22, 0.22), Vector3(0, 0.62, 0.94), 0.4))
-	body.add_child(Util.cylinder(0.55, 0.32, 0.6, Color(0.55, 0.58, 0.63), Vector3(0.2, 1.75, 0.1)))
-	body.add_child(Util.cylinder(0.14, 0.16, 1.1, Color(0.45, 0.47, 0.52), Vector3(-0.65, 2.0, -0.45)))
+	# Maschine: fertiges KayKit-Modell (Ofen bzw. Herd mit großem Topf), sonst einfache Formen
+	var built := false
+	if station_id == "oven":
+		built = Models.add(body, "restaurant-bits/oven", 1.0, Vector3(0, 0, -0.15))
+	else:
+		built = Models.add(body, "restaurant-bits/stove_multi", 1.0, Vector3(0, 0, -0.15))
+		if built:
+			Models.add(body, "restaurant-bits/pot_large", 0.7, Vector3(0, 1.2, -0.2))
+	if not built:
+		var steel := Color(0.88, 0.9, 0.93)
+		body.add_child(Util.box(Vector3(2.0, 1.25, 1.8), steel, Vector3(0, 0.625, 0)))
+		body.add_child(Util.box(Vector3(2.08, 0.28, 1.88), color, Vector3(0, 1.3, 0)))
+	body.add_child(Util.cylinder(0.14, 0.16, 1.2, Color(0.45, 0.47, 0.52), Vector3(-0.7, 2.3 if station_id == "oven" else 1.8, -0.75)))
 	var sign := Util.billboard_label(title_for(station_id), 44, Color.WHITE)
 	sign.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 	sign.no_depth_test = false
 	sign.outline_size = 8
-	sign.position = Vector3(0, 1.31, 0.95)
+	sign.position = Vector3(0, 0.25, 1.25)
 	body.add_child(sign)
 	# Dampf aus dem Schornstein
 	steam = CPUParticles3D.new()
@@ -63,7 +68,7 @@ func setup(g: Game, station_id: String, out_kind: String, color: Color) -> void:
 	puff.rings = 4
 	steam.mesh = puff
 	steam.material_override = Util.mat(Color(1, 1, 1))
-	steam.position = Vector3(-0.65, 2.6, -0.45)
+	steam.position = Vector3(-0.7, 3.0 if station_id == "oven" else 2.5, -0.75)
 	steam.emitting = false
 	body.add_child(steam)
 	# Förderband zum Ausgang mit Rollen und Beinen

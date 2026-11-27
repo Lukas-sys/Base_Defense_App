@@ -16,9 +16,15 @@ var cash_zone := Vector3.ZERO
 
 func setup(g: Game) -> void:
 	game = g
-	add_child(Util.box(Vector3(4.6, 1.0, 1.2), Color(0.22, 0.5, 0.85), Vector3(0, 0.5, 0)))
-	add_child(Util.box(Vector3(4.62, 0.18, 1.22), Color(0.16, 0.38, 0.7), Vector3(0, 0.12, 0)))
-	add_child(Util.box(Vector3(4.8, 0.14, 1.45), Color(0.96, 0.96, 0.94), Vector3(0, 1.06, 0)))
+	var left := Models.spawn("restaurant-bits/kitchencounter_straight_A", 1.0, Vector3(-1.0, 0, 0))
+	var right := Models.spawn("restaurant-bits/kitchencounter_straight_B", 1.0, Vector3(1.0, 0, 0))
+	if left != null and right != null:
+		for part in [left, right]:
+			part.scale = Vector3(1.0, 1.06, 0.7)
+			add_child(part)
+	else:
+		add_child(Util.box(Vector3(4.6, 1.0, 1.2), Color(0.22, 0.5, 0.85), Vector3(0, 0.5, 0)))
+		add_child(Util.box(Vector3(4.8, 0.14, 1.45), Color(0.96, 0.96, 0.94), Vector3(0, 1.06, 0)))
 	# Kasse
 	add_child(Util.box(Vector3(0.6, 0.35, 0.45), Color(0.3, 0.3, 0.34), Vector3(1.9, 1.3, 0.2), 0.3))
 	add_child(Util.box(Vector3(0.5, 0.2, 0.06), Color(0.45, 0.9, 0.55), Vector3(1.9, 1.4, 0.44), 0.3))
