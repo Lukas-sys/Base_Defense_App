@@ -413,7 +413,7 @@ func _in_zone(p: Vector3, center: Vector3, half: Vector2) -> bool:
 func _carrier_interact(c: Carrier, delta: float) -> void:
 	if c.can_harvest and not c.is_full():
 		for f in active_fields():
-			if f.covers(c.position):
+			if f.covers(c.position) and (c.harvest_only == "" or c.harvest_only == f.kind):
 				f.harvest_near(c)
 	c.transfer_timer -= delta
 	if c.transfer_timer > 0.0:

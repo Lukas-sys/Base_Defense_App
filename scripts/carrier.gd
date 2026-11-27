@@ -11,6 +11,7 @@ var capacity := 4
 var speed := 5.0
 var harvest_radius := 0.9
 var can_harvest := true
+var harvest_only := ""  # wenn gesetzt: nur diese Pflanze ernten
 var harvest_bits := 0
 var transfer_timer := 0.0
 var model: Node3D

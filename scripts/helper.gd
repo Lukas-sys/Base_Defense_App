@@ -78,11 +78,20 @@ func _gardener(delta: float) -> void:
 		if is_full():
 			state = State.DELIVER
 			return
-		var plant: Vector3 = Vector3.INF
+		# Das Gemüse ernten, von dem im Laden am wenigsten liegt
+		var target: Field = null
 		for f in game.veg_fields():
-			var p: Vector3 = f.nearest_grown(position)
-			if p != Vector3.INF and (plant == Vector3.INF or position.distance_squared_to(p) < position.distance_squared_to(plant)):
-				plant = p
+			if not game.veg_shop.accepts(f.kind):
+				continue
+			if target == null or game.veg_shop.stock[f.kind] < game.veg_shop.stock[target.kind]:
+				target = f
+		if target == null:
+			return
+		if stack.size() > 0 and harvest_only != target.kind:
+			state = State.DELIVER
+			return
+		harvest_only = target.kind
+		var plant: Vector3 = target.nearest_grown(position)
 		if plant == Vector3.INF:
 			if stack.size() > 0:
 				state = State.DELIVER
