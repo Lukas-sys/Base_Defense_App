@@ -1,0 +1,51 @@
+# Holt kostenlose 3D-Modelle von Kenney (Lizenz CC0, frei nutzbar) und legt sie ins Projekt.
+# Läuft nur, wenn diese Datei geändert oder der Lauf von Hand gestartet wird.
+name: 3D-Modelle holen
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/assets.yml
+
+permissions:
+  contents: write
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kenney-Pakete herunterladen
+        run: |
+          set -e
+          mkdir -p /tmp/kenney assets/kenney
+          for slug in food-kit car-kit nature-kit mini-characters furniture-kit survival-kit; do
+            echo "=== $slug"
+            url=$(curl -sL -A "Mozilla/5.0" "https://kenney.nl/assets/$slug" | grep -oE 'https://kenney\.nl/media/pages/assets/[^"]+\.zip' | head -1 || true)
+            if [ -z "$url" ]; then echo "keine ZIP gefunden für $slug"; continue; fi
+            echo "$url"
+            curl -sL -A "Mozilla/5.0" -o "/tmp/kenney/$slug.zip" "$url"
+            mkdir -p "/tmp/kenney/$slug"
+            unzip -q -o "/tmp/kenney/$slug.zip" -d "/tmp/kenney/$slug"
+            glbdir=$(find "/tmp/kenney/$slug" -type d -iname "GLB format" | head -1)
+            if [ -z "$glbdir" ]; then echo "kein GLB-Ordner in $slug"; find "/tmp/kenney/$slug" -maxdepth 3 | head -30; continue; fi
+            mkdir -p "assets/kenney/$slug"
+            cp -r "$glbdir"/. "assets/kenney/$slug/"
+            lic=$(find "/tmp/kenney/$slug" -iname "License*.txt" | head -1)
+            [ -n "$lic" ] && cp "$lic" "assets/kenney/$slug/License.txt"
+            echo "Dateien in $slug:"
+            ls "assets/kenney/$slug" | tr '\n' ' '
+            echo
+          done
+          du -sh assets/kenney/* || true
+
+      - name: Ins Repository übernehmen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/kenney
+          if git diff --cached --quiet; then echo "Nichts Neues"; exit 0; fi
+          git commit -m "Kenney-3D-Modelle (CC0) hinzugefügt"
+          git push
