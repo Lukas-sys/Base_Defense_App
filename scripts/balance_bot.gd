@@ -182,6 +182,12 @@ func _check_stuck(zone: Vector3, full: bool) -> void:
 func _log_status() -> void:
 	var st := game.oven
 	var line := "BAL %5.0fs  Geld=%s  Verkäufe=%d  Ofen ein/aus=%d/%d  Theke=%s  Autos=%d" % [t, Util.money_text(game.money), game.total_sales, st.input_stock, st.output_stock, str(game.counter.stock), game.customers.size()]
+	if game.level("pasta") > 0:
+		line += "  Nudel ein/aus=%d/%d" % [game.pasta_machine.input_stock, game.pasta_machine.output_stock]
+	var roles: PackedStringArray = []
+	for h in game.helpers:
+		roles.append("%s:%d" % [h.role, h.stack.size()])
+	line += "  Personal=[%s]" % ", ".join(roles)
 	if game.level("veg") > 0:
 		line += "  Gemüse=%s  Fußgänger=%d" % [str(game.veg_shop.stock), game.veg_shop.shoppers.size()]
 	print(line)

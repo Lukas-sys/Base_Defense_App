@@ -124,11 +124,17 @@ func serve(queue: Array, delta: float) -> void:
 		if serve_timers[j] > 0.0:
 			continue
 		serve_timers[j] = SERVE_INTERVAL
+		var served := false
 		for kind in stock:
 			if stock[kind] > 0 and customer.wants(kind):
 				stock[kind] -= 1
 				piles[kind].show_count(stock[kind])
 				customer.receive(kind, game.price(kind))
+				served = true
 				break
+		# Gibt es das Gewünschte gerade nicht, nimmt der Kunde nach kurzer Zeit etwas anderes.
+		customer.stall_time = 0.0 if served else customer.stall_time + SERVE_INTERVAL
+		if customer.stall_time > 3.0:
+			customer.substitute(stock)
 		if customer.is_done():
 			game.on_customer_paid(customer)

@@ -133,12 +133,17 @@ func _serve(delta: float) -> void:
 	if serve_timer > 0.0:
 		return
 	serve_timer = SERVE_INTERVAL
+	var served := false
 	for kind in stock:
 		if stock[kind] > 0 and front.wants(kind):
 			stock[kind] -= 1
 			piles[kind].show_count(stock[kind])
 			front.receive(kind, game.price(kind))
+			served = true
 			break
+	front.stall_time = 0.0 if served else front.stall_time + SERVE_INTERVAL
+	if front.stall_time > 3.0:
+		front.substitute(stock)
 	if front.is_done():
 		shoppers.pop_front()
 		money_pile.add(front.paid)

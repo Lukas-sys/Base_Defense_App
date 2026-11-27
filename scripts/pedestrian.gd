@@ -10,6 +10,7 @@ var order := {}
 var target_x := 0.0
 var leaving := false
 var paid := 0.0
+var stall_time := 0.0
 var bubble: Label3D
 var bubble_bg: Sprite3D
 
@@ -81,6 +82,20 @@ func receive(kind: String, price: float) -> void:
 	paid += price
 	add_item(kind)
 	_update_bubble()
+
+
+## Fehlende Ware durch etwas ersetzen, das im Laden liegt.
+func substitute(stock: Dictionary) -> void:
+	for missing in order:
+		if order[missing] <= 0 or stock.get(missing, 0) > 0:
+			continue
+		for other in stock:
+			if stock[other] > 0:
+				order[other] = order.get(other, 0) + order[missing]
+				order[missing] = 0
+				stall_time = 0.0
+				_update_bubble()
+				return
 
 
 func leave() -> void:
