@@ -1,0 +1,8 @@
+# Godot-Cache (wird automatisch neu erzeugt)
+.godot/
+# Gebaute Spiele
+build/
+*.apk
+*.aab
+*.exe
+*.pck
