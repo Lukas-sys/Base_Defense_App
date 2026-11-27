@@ -21,9 +21,9 @@ const BASE_PRICE := {"pizza": 5.0, "pasta": 9.0}
 
 ## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
 const UPGRADES := {
-	"capacity": {"title": "Größerer Korb", "max": 10, "base": 15.0, "growth": 1.55, "pos": Vector3(-4.4, 0, -0.2), "req": {}},
+	"capacity": {"title": "Größerer Korb", "max": 10, "base": 15.0, "growth": 1.55, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
 	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
-	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(4.4, 0, -0.2), "req": {"field": 1}},
+	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
 	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 50.0, "growth": 1.7, "pos": Vector3(-6.8, 0, -1.8), "req": {"farmer": 1}},
 	"cashier": {"title": "Kassierer", "max": 1, "base": 160.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"farmer": 1}},
 	"waiter": {"title": "Kellner", "max": 3, "base": 220.0, "growth": 2.6, "pos": Vector3(6.9, 0, -8.4), "req": {"cashier": 1}},
