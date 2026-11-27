@@ -10,8 +10,8 @@ var collect_timer := 0.0
 
 
 func _ready() -> void:
-	add_child(Util.box(Vector3(2.2, 0.04, 2.0), Color(1, 1, 1), Vector3(0, 0.02, 0)))
-	add_child(Util.box(Vector3(2.0, 0.05, 1.8), Color(0.45, 0.32, 0.22), Vector3(0, 0.03, 0)))
+	add_child(Util.rounded_slab(Vector2(2.3, 2.1), 0.45, 0.05, Color(1, 1, 1)))
+	add_child(Util.rounded_slab(Vector2(2.05, 1.85), 0.35, 0.06, Color(0.52, 0.38, 0.27)))
 	pile = Pile.new()
 	pile.setup("money", 32, 2)
 	pile.position = Vector3(-0.35, 0.06, -0.4)

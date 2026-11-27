@@ -86,8 +86,11 @@ func _ready() -> void:
 	player.position = Vector3(0.3, 0, -2.0)
 	add_child(player)
 	camera = Camera3D.new()
-	camera.rotation_degrees = Vector3(-56, 0, 0)
-	camera.fov = 52.0
+	camera.rotation_degrees = Vector3(-52, 0, 0)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.keep_aspect = Camera3D.KEEP_WIDTH
+	camera.size = 12.5
+	camera.far = 80.0
 	add_child(camera)
 	camera.position = player.position + _camera_offset()
 	hud = Hud.new()
@@ -124,7 +127,7 @@ func _process(delta: float) -> void:
 
 
 func _camera_offset() -> Vector3:
-	return Vector3(0, 16.5, 11.0)
+	return Vector3(0, 22.0, 17.2)
 
 
 func clamp_to_map(p: Vector3) -> Vector3:
@@ -291,11 +294,13 @@ func _carrier_interact(c: Carrier, delta: float) -> void:
 			continue
 		if not is_waiter and _in_zone(c.position, st.input_zone, Vector2(0.9, 0.8)) and c.has_item(st.input_kind) and st.wants_input():
 			c.take_item(st.input_kind)
+			fly_item(st.input_kind, c.position + Vector3(0, 1.0, 0), st.input_pile.global_position + Vector3(0, 0.4, 0))
 			st.put_input()
 			c.transfer_timer = Carrier.TRANSFER_INTERVAL
 			return
 		if not is_farmer and _in_zone(c.position, st.output_zone, Vector2(0.9, 0.8)) and not c.is_full() and st.output_stock > 0:
 			st.take_output()
+			fly_item(st.output_kind, st.output_pile.global_position + Vector3(0, 0.3, 0), c.position + Vector3(0, 1.0, 0))
 			c.add_item(st.output_kind)
 			c.transfer_timer = Carrier.TRANSFER_INTERVAL
 			return
@@ -303,6 +308,7 @@ func _carrier_interact(c: Carrier, delta: float) -> void:
 		for kind in ["pizza", "pasta"]:
 			if c.has_item(kind) and counter.has_room(kind):
 				c.take_item(kind)
+				fly_item(kind, c.position + Vector3(0, 1.0, 0), counter.piles[kind].global_position + Vector3(0, 0.3, 0))
 				counter.put(kind)
 				c.transfer_timer = Carrier.TRANSFER_INTERVAL
 				return
@@ -466,44 +472,93 @@ func _update_arrow() -> void:
 
 # --------------------------------------------------------------- Welt-Aufbau
 
+const GRASS_COLORS := [Color(0.72, 0.86, 0.53), Color(0.86, 0.82, 0.55), Color(0.66, 0.84, 0.74), Color(0.9, 0.76, 0.62)]
+
+
 func _build_world() -> void:
+	var grass: Color = GRASS_COLORS[stars % GRASS_COLORS.size()]
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.62, 0.78, 0.55)
+	env.background_color = grass
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.85, 0.85, 0.9)
-	env.ambient_light_energy = 0.4
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.ambient_light_color = Color(0.95, 0.95, 1.0)
+	env.ambient_light_energy = 0.55
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.15
+	env.adjustment_contrast = 1.05
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-60, -30, 0)
+	sun.rotation_degrees = Vector3(-55, -40, 0)
+	sun.light_color = Color(1.0, 0.97, 0.9)
+	sun.light_energy = 0.95
 	sun.shadow_enabled = true
-	sun.light_energy = 0.85
+	sun.shadow_blur = 1.5
+	sun.shadow_opacity = 0.55
+	sun.directional_shadow_max_distance = 40.0
 	add_child(sun)
 
-	var tint: Color = [Color(0.45, 0.68, 0.35), Color(0.78, 0.75, 0.5), Color(0.55, 0.72, 0.7), Color(0.8, 0.65, 0.55)][stars % 4]
-	add_child(Util.box(Vector3(80, 0.1, 80), tint, Vector3(0, -0.06, 0)))
-	# Straße
-	add_child(Util.box(Vector3(60, 0.04, 3.2), Color(0.55, 0.56, 0.6), Vector3(0, 0.0, ROAD_Z)))
-	add_child(Util.box(Vector3(60, 0.05, 0.12), Color(0.95, 0.95, 0.95), Vector3(0, 0.0, ROAD_Z - 1.45)))
-	# Holzboden der Küche
-	add_child(Util.box(Vector3(22, 0.06, 11.5), Color(0.72, 0.55, 0.38), Vector3(0, 0.0, -6.0)))
-	# Büsche als Deko
-	for i in 14:
+	# Wiese
+	var ground := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(90, 90)
+	ground.mesh = plane
+	ground.material_override = Util.mat(grass)
+	ground.position.y = -0.03
+	add_child(ground)
+	# Grasbüschel
+	for i in 120:
+		var p := Vector3(randf_range(-20, 20), 0, randf_range(-12, 22))
+		if absf(p.x) < 9.0 and p.z > -12.0 and p.z < 14.0:
+			continue
+		var tuft := Util.cylinder(0.0, 0.12, 0.3, grass.darkened(0.15), p + Vector3(0, 0.12, 0), 4)
+		add_child(tuft)
+	# Straße mit Bordstein und Mittellinie
+	add_child(Util.box(Vector3(70, 0.05, 3.4), Color(0.66, 0.67, 0.7), Vector3(0, 0.0, ROAD_Z), 0.1))
+	add_child(Util.box(Vector3(70, 0.12, 0.25), Color(0.92, 0.92, 0.92), Vector3(0, 0.03, ROAD_Z + 1.8), 0.4))
+	add_child(Util.box(Vector3(70, 0.12, 0.25), Color(0.92, 0.92, 0.92), Vector3(0, 0.03, ROAD_Z - 1.8), 0.4))
+	var x := -34.0
+	while x < 34.0:
+		add_child(Util.box(Vector3(1.2, 0.06, 0.14), Color(1, 1, 1), Vector3(x, 0.01, ROAD_Z), 0.5))
+		x += 2.4
+	# Holzboden der Küche mit Dielen-Textur und Rand
+	var floor_size := Vector2(19.0, 10.6)
+	var floor_mesh := MeshInstance3D.new()
+	var fp := PlaneMesh.new()
+	fp.size = floor_size
+	floor_mesh.mesh = fp
+	floor_mesh.material_override = Util.textured_mat(Util.plank_texture(), Vector2(floor_size.x / 4.0, floor_size.y / 4.0))
+	floor_mesh.position = Vector3(0, 0.03, -6.1)
+	add_child(floor_mesh)
+	add_child(Util.box(Vector3(floor_size.x + 0.3, 0.06, floor_size.y + 0.3), Color(0.93, 0.86, 0.68), Vector3(0, 0.0, -6.1), 0.2))
+	# Geländer an den Seiten der Küche
+	for side in [-1.0, 1.0]:
+		var gx: float = side * (floor_size.x * 0.5 + 0.05)
+		var z := -11.2
+		while z <= -1.2:
+			add_child(Util.box(Vector3(0.18, 0.7, 0.18), Color(0.95, 0.9, 0.75), Vector3(gx, 0.35, z), 0.3))
+			z += 1.0
+		add_child(Util.box(Vector3(0.14, 0.12, 10.2), Color(0.95, 0.9, 0.75), Vector3(gx, 0.62, -6.2), 0.4))
+	# Bäume und Büsche ringsum
+	for i in 26:
 		var side := -1.0 if i % 2 == 0 else 1.0
-		var bush := Util.sphere(randf_range(0.8, 1.5), Color(0.3, 0.6, 0.3), Vector3(side * randf_range(12.5, 16.0), 0.3, randf_range(-10.0, 14.0)))
-		bush.scale = Vector3(1, 0.7, 1)
-		add_child(bush)
+		var p := Vector3(side * randf_range(10.8, 18.0), 0, randf_range(-11.0, 18.0))
+		if randf() < 0.5:
+			_add_tree(p)
+		else:
+			_add_bush(p)
+	for i in 10:
+		_add_bush(Vector3(randf_range(-16, 16), 0, randf_range(-18.0, -15.5)))
 
 	field = Field.new()
+	field.game = self
 	field.position = FIELD_POS
 	add_child(field)
 
-	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.85, 0.35, 0.25))
+	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.9, 0.38, 0.28))
 	oven.base_time = 1.6
-	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.95, 0.8, 0.3))
+	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.98, 0.78, 0.25))
 	pasta_machine.base_time = 2.2
 
 	counter = Counter.new()
@@ -516,17 +571,88 @@ func _build_world() -> void:
 	add_child(money_pile)
 
 	arrow = Node3D.new()
-	var shaft := Util.box(Vector3(0.45, 0.8, 0.45), Color(0.2, 0.55, 1.0), Vector3(0, 0.9, 0))
-	arrow.add_child(shaft)
+	var arrow_color := Color(0.35, 0.7, 1.0)
+	arrow.add_child(Util.box(Vector3(0.42, 0.7, 0.42), arrow_color, Vector3(0, 0.95, 0), 0.4))
 	var head := MeshInstance3D.new()
 	var prism := PrismMesh.new()
-	prism.size = Vector3(1.2, 0.8, 0.5)
+	prism.size = Vector3(1.1, 0.75, 0.45)
 	head.mesh = prism
-	head.material_override = Util.mat(Color(0.2, 0.55, 1.0))
+	head.material_override = Util.mat(arrow_color)
 	head.rotation_degrees = Vector3(0, 0, 180)
-	head.position = Vector3(0, 0.1, 0)
+	head.position = Vector3(0, 0.3, 0)
 	arrow.add_child(head)
 	add_child(arrow)
+
+
+func _add_tree(p: Vector3) -> void:
+	var s := randf_range(0.8, 1.3)
+	var t := Node3D.new()
+	t.position = p
+	t.scale = Vector3.ONE * s
+	t.rotation.y = randf() * TAU
+	t.add_child(Util.cylinder(0.14, 0.2, 1.2, Color(0.55, 0.36, 0.24), Vector3(0, 0.6, 0), 7))
+	t.add_child(Util.lowpoly_sphere(0.9, Color(0.36, 0.66, 0.34), Vector3(0, 1.7, 0)))
+	t.add_child(Util.lowpoly_sphere(0.65, Color(0.42, 0.72, 0.36), Vector3(0.35, 2.2, 0.1)))
+	add_child(t)
+
+
+func _add_bush(p: Vector3) -> void:
+	var b := Node3D.new()
+	b.position = p
+	b.rotation.y = randf() * TAU
+	var c := Color(0.4, 0.7, 0.38).lightened(randf_range(-0.08, 0.08))
+	b.add_child(Util.lowpoly_sphere(0.8, c, Vector3(0, 0.35, 0)))
+	b.add_child(Util.lowpoly_sphere(0.6, c.lightened(0.06), Vector3(0.7, 0.25, 0.2)))
+	b.add_child(Util.lowpoly_sphere(0.55, c.darkened(0.05), Vector3(-0.6, 0.22, -0.1)))
+	b.scale = Vector3(1, 0.8, 1) * randf_range(0.8, 1.3)
+	add_child(b)
+
+
+# ------------------------------------------------------------ Effekte
+
+var _last_burst := 0
+
+
+## Kleine Ernte-Partikel, wenn ein Halm geschnitten wird.
+func on_harvest(where: Vector3) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _last_burst < 70:
+		return
+	_last_burst = now
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = 10
+	p.lifetime = 0.6
+	p.explosiveness = 0.95
+	p.direction = Vector3.UP
+	p.spread = 70.0
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 3.5
+	p.gravity = Vector3(0, -9, 0)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.0
+	var m := BoxMesh.new()
+	m.size = Vector3(0.08, 0.08, 0.08)
+	p.mesh = m
+	p.material_override = Util.mat(Color(1.0, 0.85, 0.35))
+	p.position = where + Vector3(0, 0.6, 0)
+	add_child(p)
+	p.emitting = true
+	get_tree().create_timer(1.0).timeout.connect(p.queue_free)
+
+
+## Lässt einen Gegenstand im Bogen von a nach b fliegen (nur Optik).
+func fly_item(kind: String, from: Vector3, to: Vector3) -> void:
+	var it := Util.item(kind)
+	it.position = from
+	add_child(it)
+	var t := it.create_tween()
+	t.tween_method(func(k: float) -> void:
+		var pos := from.lerp(to, k)
+		pos.y += sin(k * PI) * 1.2
+		it.position = pos
+		it.rotation.y = k * PI, 0.0, 1.0, 0.22)
+	t.tween_callback(it.queue_free)
 
 
 func _make_station(id: String, out_kind: String, pos: Vector3, color: Color) -> Station:
@@ -561,15 +687,7 @@ func _build_fence() -> void:
 
 
 func popup_text(where: Vector3, text: String, color: Color) -> void:
-	var label := Label3D.new()
-	label.text = text
-	label.modulate = color
-	label.outline_modulate = Color(0, 0, 0, 0.8)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.no_depth_test = true
-	label.font_size = 72
-	label.outline_size = 14
-	label.pixel_size = 0.01
+	var label := Util.billboard_label(text, 72, color)
 	label.position = where + Vector3(0, 2.4, 0)
 	add_child(label)
 	var t := label.create_tween()

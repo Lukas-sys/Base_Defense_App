@@ -11,6 +11,9 @@ var state := State.ARRIVING
 var order := {}  # z. B. {"pizza": 2, "pasta": 1}
 var target_x := 0.0
 var bubble: Label3D
+var bubble_bg: Sprite3D
+var car: Node3D
+var drive_time := 0.0
 var paid := 0.0
 
 
@@ -20,23 +23,38 @@ func setup(g: Game, wanted: Dictionary) -> void:
 
 
 func _ready() -> void:
-	var colors := [Color(0.25, 0.55, 0.9), Color(0.95, 0.5, 0.2), Color(0.95, 0.8, 0.25), Color(0.6, 0.35, 0.8), Color(0.9, 0.3, 0.35)]
+	var colors := [Color(0.3, 0.6, 0.95), Color(0.98, 0.55, 0.25), Color(0.98, 0.82, 0.3), Color(0.62, 0.45, 0.88), Color(0.95, 0.4, 0.45), Color(0.35, 0.8, 0.6)]
 	var c: Color = colors[randi() % colors.size()]
-	add_child(Util.box(Vector3(2.6, 0.7, 1.4), c, Vector3(0, 0.6, 0)))
-	add_child(Util.box(Vector3(1.5, 0.6, 1.3), c.lightened(0.15), Vector3(-0.2, 1.2, 0)))
-	add_child(Util.box(Vector3(1.4, 0.45, 1.32), Color(0.7, 0.85, 0.95), Vector3(-0.2, 1.2, 0)))
+	var glass := Color(0.72, 0.88, 0.98)
+	car = Node3D.new()
+	add_child(car)
+	car.add_child(Util.box(Vector3(2.7, 0.62, 1.45), c, Vector3(0, 0.6, 0), 0.5))
+	car.add_child(Util.box(Vector3(1.6, 0.62, 1.32), c.lightened(0.1), Vector3(-0.2, 1.15, 0), 0.4))
+	car.add_child(Util.box(Vector3(1.66, 0.42, 1.2), glass, Vector3(-0.2, 1.13, 0), 0.3))
+	car.add_child(Util.box(Vector3(1.4, 0.42, 1.36), glass, Vector3(-0.2, 1.13, 0), 0.3))
+	car.add_child(Util.box(Vector3(1.66, 0.1, 1.34), c.lightened(0.1), Vector3(-0.2, 1.45, 0), 0.5))
+	car.add_child(Util.box(Vector3(0.06, 0.16, 0.3), Color(1.0, 0.97, 0.8), Vector3(1.36, 0.68, 0.45), 0.4))
+	car.add_child(Util.box(Vector3(0.06, 0.16, 0.3), Color(1.0, 0.97, 0.8), Vector3(1.36, 0.68, -0.45), 0.4))
 	for x in [-0.85, 0.85]:
-		for z in [-0.7, 0.7]:
-			var wheel := Util.cylinder(0.28, 0.28, 0.2, Color(0.12, 0.12, 0.12), Vector3(x, 0.28, z))
+		for z in [-0.72, 0.72]:
+			var wheel := Util.cylinder(0.3, 0.3, 0.22, Color(0.15, 0.15, 0.17), Vector3(x, 0.3, z))
 			wheel.rotation_degrees = Vector3(90, 0, 0)
-			add_child(wheel)
-	bubble = Label3D.new()
-	bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	bubble.no_depth_test = true
-	bubble.font_size = 64
-	bubble.outline_size = 14
-	bubble.pixel_size = 0.01
-	bubble.position = Vector3(0, 2.4, 0)
+			car.add_child(wheel)
+			var hub := Util.cylinder(0.13, 0.13, 0.24, Color(0.85, 0.85, 0.88), Vector3(x, 0.3, z))
+			hub.rotation_degrees = Vector3(90, 0, 0)
+			car.add_child(hub)
+	bubble_bg = Sprite3D.new()
+	bubble_bg.texture = Util.bubble_texture()
+	bubble_bg.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	bubble_bg.no_depth_test = true
+	bubble_bg.render_priority = 1
+	bubble_bg.pixel_size = 0.01
+	bubble_bg.position = Vector3(0, 2.6, 0)
+	add_child(bubble_bg)
+	bubble = Util.billboard_label("", 52, Color(0.2, 0.17, 0.17))
+	bubble.outline_size = 0
+	bubble.render_priority = 2
+	bubble.position = Vector3(0, 2.6, 0)
 	add_child(bubble)
 	_update_bubble()
 
@@ -47,6 +65,10 @@ func _process(delta: float) -> void:
 			var dx := target_x - position.x
 			if absf(dx) > 0.05:
 				position.x += signf(dx) * minf(absf(dx), SPEED * delta)
+				drive_time += delta
+				car.position.y = absf(sin(drive_time * 18.0)) * 0.04
+			else:
+				car.position.y = 0.0
 		State.LEAVING:
 			position.x += SPEED * 1.3 * delta
 			if position.x > Game.ROAD_END:
@@ -77,7 +99,8 @@ func receive(kind: String, price: float) -> void:
 func leave() -> void:
 	state = State.LEAVING
 	bubble.text = "Danke!"
-	bubble.modulate = Color(0.5, 1.0, 0.5)
+	bubble.modulate = Color(0.2, 0.6, 0.25)
+	bubble_bg.scale = Vector3(1.3, 1.0, 1)
 
 
 func _update_bubble() -> void:
@@ -86,3 +109,4 @@ func _update_bubble() -> void:
 		if order[k] > 0:
 			parts.append("%d %s" % [order[k], Game.ITEM_NAMES[k]])
 	bubble.text = "\n".join(parts)
+	bubble_bg.scale = Vector3(1.55, 0.35 + 0.65 * maxi(1, parts.size()), 1)

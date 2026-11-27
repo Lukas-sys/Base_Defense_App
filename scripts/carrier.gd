@@ -11,8 +11,13 @@ var capacity := 4
 var speed := 5.0
 var harvest_radius := 0.9
 var can_harvest := true
+var harvest_bits := 0
 var transfer_timer := 0.0
 var model: Node3D
+var body_root: Node3D
+var hand_l: Node3D
+var hand_r: Node3D
+var moving := false
 var stack_root: Node3D
 var walk_time := 0.0
 
@@ -21,19 +26,38 @@ func setup(g: Game) -> void:
 	game = g
 
 
-## Baut eine einfache Figur: Körper, Kopf, Mütze in der gewünschten Farbe.
-func build_body(shirt: Color, cap: Color) -> void:
+## Baut eine niedliche Figur: runder Körper, großer Kopf, Mütze mit Schirm, Hände.
+func build_body(shirt: Color, cap: Color, skin := Color(1.0, 0.82, 0.5)) -> void:
 	model = Node3D.new()
 	add_child(model)
-	model.add_child(Util.capsule(0.32, 1.0, shirt, Vector3(0, 0.5, 0)))
-	model.add_child(Util.sphere(0.33, Color(1.0, 0.8, 0.45), Vector3(0, 1.2, 0)))
-	model.add_child(Util.sphere(0.34, cap, Vector3(0, 1.32, 0.02)))
-	model.add_child(Util.box(Vector3(0.4, 0.06, 0.3), cap, Vector3(0, 1.32, -0.35)))
-	model.add_child(Util.box(Vector3(0.07, 0.1, 0.05), Color(0.1, 0.1, 0.1), Vector3(0.12, 1.2, -0.31)))
-	model.add_child(Util.box(Vector3(0.07, 0.1, 0.05), Color(0.1, 0.1, 0.1), Vector3(-0.12, 1.2, -0.31)))
+	body_root = Node3D.new()
+	model.add_child(body_root)
+	var torso := Util.sphere(0.36, shirt, Vector3(0, 0.42, 0))
+	torso.scale = Vector3(1.0, 1.15, 0.95)
+	body_root.add_child(torso)
+	body_root.add_child(Util.sphere(0.36, skin, Vector3(0, 1.02, 0)))
+	var cap_dome := Util.hemisphere(0.38, cap, Vector3(0, 1.08, 0.02))
+	body_root.add_child(cap_dome)
+	var brim := Util.cylinder(0.24, 0.24, 0.05, cap, Vector3(0, 1.1, -0.34))
+	brim.scale = Vector3(1.1, 1, 0.75)
+	body_root.add_child(brim)
+	body_root.add_child(Util.sphere(0.045, Color(0.12, 0.1, 0.1), Vector3(0.13, 0.98, -0.33)))
+	body_root.add_child(Util.sphere(0.045, Color(0.12, 0.1, 0.1), Vector3(-0.13, 0.98, -0.33)))
+	hand_l = Util.sphere(0.1, skin, Vector3(-0.38, 0.45, -0.1))
+	hand_r = Util.sphere(0.1, skin, Vector3(0.38, 0.45, -0.1))
+	body_root.add_child(hand_l)
+	body_root.add_child(hand_r)
+	# weicher runder Schatten unter der Figur
+	var shadow := Util.cylinder(0.42, 0.42, 0.01, Color(0, 0, 0, 1), Vector3(0, 0.02, 0))
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0, 0, 0, 0.18)
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shadow.material_override = sm
+	add_child(shadow)
 	stack_root = Node3D.new()
-	stack_root.position = Vector3(0, 0.55, -0.55)
-	model.add_child(stack_root)
+	stack_root.position = Vector3(0, 0.5, -0.62)
+	body_root.add_child(stack_root)
 
 
 func is_full() -> bool:
@@ -66,13 +90,19 @@ func take_item(kind: String) -> bool:
 ## Lässt sich in eine Richtung bewegen (Länge 0..1) und dreht die Figur passend.
 func walk(dir: Vector3, delta: float) -> void:
 	if dir.length() < 0.05:
-		model.position.y = 0.0
+		_idle_pose(delta)
 		return
 	position += dir * speed * delta
 	position = game.clamp_to_map(position)
-	Util.face(model, dir)
+	_turn_towards(dir, delta)
 	walk_time += delta
-	model.position.y = absf(sin(walk_time * 12.0)) * 0.08
+	moving = true
+	var bob := absf(sin(walk_time * 12.0))
+	body_root.position.y = bob * 0.1
+	body_root.scale = Vector3(1.0 + (1.0 - bob) * 0.05, 1.0 - (1.0 - bob) * 0.05, 1.0)
+	hand_l.position.z = -0.1 + sin(walk_time * 12.0) * 0.12
+	hand_r.position.z = -0.1 - sin(walk_time * 12.0) * 0.12
+	stack_root.rotation.x = lerpf(stack_root.rotation.x, 0.12, 1.0 - exp(-8.0 * delta))
 
 
 ## Läuft zu einem Ziel. Gibt true zurück, wenn es erreicht ist.
@@ -80,18 +110,41 @@ func walk_to(target: Vector3, reach: float, delta: float) -> bool:
 	var to := target - position
 	to.y = 0.0
 	if to.length() <= reach:
-		model.position.y = 0.0
+		_idle_pose(get_process_delta_time())
 		return true
 	walk(to.normalized(), delta)
 	return false
 
 
+func _idle_pose(delta: float) -> void:
+	moving = false
+	var k := 1.0 - exp(-10.0 * delta)
+	body_root.position.y = lerpf(body_root.position.y, 0.0, k)
+	body_root.scale = body_root.scale.lerp(Vector3.ONE, k)
+	hand_l.position.z = lerpf(hand_l.position.z, -0.1, k)
+	hand_r.position.z = lerpf(hand_r.position.z, -0.1, k)
+	stack_root.rotation.x = lerpf(stack_root.rotation.x, 0.0, k)
+
+
+## Dreht die Figur weich in die Laufrichtung.
+func _turn_towards(dir: Vector3, delta: float) -> void:
+	var target := atan2(-dir.x, -dir.z)
+	model.rotation.y = lerp_angle(model.rotation.y, target, 1.0 - exp(-14.0 * delta))
+
+
 func _refresh_stack() -> void:
+	var old := stack_root.get_child_count()
 	for child in stack_root.get_children():
 		child.queue_free()
 	var y := 0.0
+	var i := 0
 	for kind in stack:
 		var it := Util.item(kind)
 		it.position = Vector3(0, y, 0)
 		stack_root.add_child(it)
 		y += Util.item_height(kind)
+		if i >= old:
+			it.scale = Vector3.ONE * 0.3
+			var t := it.create_tween()
+			t.tween_property(it, "scale", Vector3.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		i += 1
