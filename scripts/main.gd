@@ -225,8 +225,8 @@ func _move_to_new_location() -> void:
 
 func _refresh_tiles() -> void:
 	for id in UPGRADES:
-		var show := _is_unlocked(id)
-		if show and not tiles.has(id):
+		var show_tile := _is_unlocked(id)
+		if show_tile and not tiles.has(id):
 			var t := PayTile.new()
 			t.setup(self, id)
 			t.paid = float(tile_paid.get(id, 0.0))
@@ -235,10 +235,10 @@ func _refresh_tiles() -> void:
 			tiles[id] = t
 			if id == "new_location":
 				hud.show_message("Alles ausgebaut! Ein neuer Standort wartet auf dich.", 4.0)
-		elif not show and tiles.has(id):
+		elif not show_tile and tiles.has(id):
 			tiles[id].queue_free()
 			tiles.erase(id)
-		elif show:
+		elif show_tile:
 			tiles[id].refresh()
 
 
@@ -482,7 +482,7 @@ func _build_world() -> void:
 	sun.light_energy = 1.0
 	add_child(sun)
 
-	var tint := [Color(0.62, 0.78, 0.5), Color(0.78, 0.75, 0.5), Color(0.55, 0.72, 0.7), Color(0.8, 0.65, 0.55)][stars % 4]
+	var tint: Color = [Color(0.62, 0.78, 0.5), Color(0.78, 0.75, 0.5), Color(0.55, 0.72, 0.7), Color(0.8, 0.65, 0.55)][stars % 4]
 	add_child(Util.box(Vector3(80, 0.1, 80), tint, Vector3(0, -0.06, 0)))
 	# Straße
 	add_child(Util.box(Vector3(60, 0.04, 3.2), Color(0.55, 0.56, 0.6), Vector3(0, 0.0, ROAD_Z)))

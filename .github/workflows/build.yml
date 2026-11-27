@@ -34,11 +34,16 @@ jobs:
           fi
 
       - name: Projekt importieren
-        run: timeout 300 godot --headless --import || true
+        run: |
+          timeout 300 godot --headless --import 2>&1 | tee import.log || true
+          if grep -E "SCRIPT ERROR|Parse Error|Compile Error" import.log; then
+            echo "::error::Ein Skript hat einen Fehler (siehe oben)."
+            exit 1
+          fi
 
       - name: Selbsttest (Spiel automatisch laufen lassen)
         run: |
-          timeout 300 godot --headless --path . -- --smoke 2>&1 | tee smoke.log
+          timeout 150 godot --headless --path . -- --smoke 2>&1 | tee smoke.log
           if grep -E "SCRIPT ERROR|Parse Error|Compile Error" smoke.log; then
             echo "::error::Im Spiel ist ein Skript-Fehler aufgetreten (siehe oben)."
             exit 1
