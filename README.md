@@ -120,6 +120,14 @@ Alle Preise, Kosten und Stufen stehen gut lesbar oben in `scripts/main.gd` in de
 (Option `--smoke`). Die Figur erntet, alle Upgrades werden gekauft, und das Personal muss
 selbstständig Essen verkaufen. Klappt das nicht, ist der Lauf unter **Actions** rot.
 
+## Updates aufs Handy
+
+Bei jedem Hochladen veröffentlicht GitHub eine neue Version unter **Releases**
+(APK, Spielpaket `hofkueche.pck` und `version.json`). Das Spiel fragt beim Start dort nach
+und lädt neuere Spielpakete selbst (`scripts/boot.gd`). Dafür muss das Repo öffentlich sein.
+Braucht eine Änderung ein neues APK (z. B. neue Android-Einstellungen oder neue `class_name`-Skripte),
+die Zahl in `min_apk.txt` auf die neue Versionsnummer setzen: dann bietet das Spiel die Installation an.
+
 ## Grafik
 
 Die fertigen 3D-Modelle stammen aus den kostenlosen **KayKit**-Paketen von Kay Lousberg
