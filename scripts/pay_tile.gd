@@ -29,7 +29,7 @@ func _ready() -> void:
 	bills.position = Vector3(-0.75, 0.08, 0.55)
 	bills.rotation_degrees = Vector3(0, 25, 0)
 	add_child(bills)
-	title_label = Util.floor_label("", 36, Color(1.0, 0.92, 0.7))
+	title_label = Util.floor_label("", 30, Color(1.0, 0.92, 0.7))
 	title_label.position = Vector3(0, 0.08, -0.55)
 	title_label.width = 220
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

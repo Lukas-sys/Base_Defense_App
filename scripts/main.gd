@@ -472,7 +472,7 @@ func _update_arrow() -> void:
 
 # --------------------------------------------------------------- Welt-Aufbau
 
-const GRASS_COLORS := [Color(0.72, 0.86, 0.53), Color(0.86, 0.82, 0.55), Color(0.66, 0.84, 0.74), Color(0.9, 0.76, 0.62)]
+const GRASS_COLORS := [Color(0.5, 0.7, 0.34), Color(0.66, 0.64, 0.36), Color(0.44, 0.66, 0.55), Color(0.7, 0.56, 0.42)]
 
 
 func _build_world() -> void:
@@ -482,17 +482,14 @@ func _build_world() -> void:
 	env.background_color = grass
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.95, 0.95, 1.0)
-	env.ambient_light_energy = 0.55
-	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.15
-	env.adjustment_contrast = 1.05
+	env.ambient_light_energy = 0.38
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, -40, 0)
 	sun.light_color = Color(1.0, 0.97, 0.9)
-	sun.light_energy = 0.95
+	sun.light_energy = 0.8
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.5
 	sun.shadow_opacity = 0.55
@@ -528,7 +525,7 @@ func _build_world() -> void:
 	var fp := PlaneMesh.new()
 	fp.size = floor_size
 	floor_mesh.mesh = fp
-	floor_mesh.material_override = Util.textured_mat(Util.plank_texture(), Vector2(floor_size.x / 4.0, floor_size.y / 4.0))
+	floor_mesh.material_override = Util.textured_mat(Util.plank_texture(), Vector2(floor_size.x / 4.0, floor_size.y / 4.0), Color(0.82, 0.8, 0.78))
 	floor_mesh.position = Vector3(0, 0.03, -6.1)
 	add_child(floor_mesh)
 	add_child(Util.box(Vector3(floor_size.x + 0.3, 0.06, floor_size.y + 0.3), Color(0.93, 0.86, 0.68), Vector3(0, 0.0, -6.1), 0.2))

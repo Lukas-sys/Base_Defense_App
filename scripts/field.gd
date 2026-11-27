@@ -71,7 +71,7 @@ func size_z() -> float:
 
 func _set_plant(i: int, height: float) -> void:
 	var h := maxf(height, 0.05)
-	var basis := Basis(Vector3.UP, spins[i]).scaled(Vector3(1.0, h, 1.0))
+	var basis := Basis(Vector3.UP, spins[i]).scaled(Vector3(1.5, h * 1.1, 1.5))
 	multimesh.set_instance_transform(i, Transform3D(basis, positions[i] + Vector3(0, 0.02, 0)))
 
 
