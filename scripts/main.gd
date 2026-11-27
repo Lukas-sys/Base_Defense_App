@@ -10,7 +10,7 @@ extends Node3D
 const SAVE_PATH := "user://hofkueche_save.json"
 const ROAD_Z := -13.2
 const ROAD_START := -24.0
-const ROAD_END := 24.0
+const ROAD_END := 40.0
 const COUNTER_POS := Vector3(0, 0, -10)
 const QUEUE_SPACING := 3.6
 const LANE_IN := -12.45  # Autos fahren auf dieser Spur zur Kasse
@@ -18,8 +18,11 @@ const LANE_OUT := -14.0  # und auf dieser wieder weg
 const FIELD_POS := Vector3(0, 0, 1.6)
 const MAP_X := 8.5
 
-const ITEM_NAMES := {"pizza": "Pizza", "pasta": "Nudeln"}
-const BASE_PRICE := {"pizza": 6.0, "pasta": 11.0}
+const ITEM_NAMES := {"pizza": "Pizza", "pasta": "Nudeln", "tomato": "Tomaten", "carrot": "Karotten"}
+const BASE_PRICE := {"pizza": 6.0, "pasta": 11.0, "tomato": 4.0, "carrot": 6.0}
+const PRICE_UPGRADE := {"pizza": "prices", "pasta": "prices", "tomato": "veg_prices", "carrot": "veg_prices"}
+const VEG_X := 18.0  # Mitte des Gemüse-Gebiets rechts neben der Pizzeria
+const VEG_MAP_X := 26.5
 
 ## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
 ## "titles" = eigener Name pro Stufe (z. B. erst Erntehelfer, später Erntemaschine).
@@ -38,7 +41,15 @@ const UPGRADES := {
 	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 250.0, "growth": 1.6, "pos": Vector3(7.1, 0, 10.0), "req": {"pasta": 1}},
 	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
 	"mower": {"title": "Sense (breiter ernten)", "max": 3, "base": 200.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
-	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta_belt": 1, "harvest": 4, "register3": 1, "prices": 3}},
+	# --- Gemüsegarten und Gemüseladen (Gebiet rechts) ---
+	"veg": {"title": "Gemüseladen eröffnen", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(7.4, 0, -5.2), "req": {"service": 2}},
+	"carrots": {"title": "Karottenbeet", "max": 1, "base": 400.0, "growth": 1.0, "pos": Vector3(21.4, 0, -2.4), "req": {"veg": 1}},
+	"veg_cashier": {"title": "Verkäuferin", "max": 1, "base": 300.0, "growth": 1.0, "pos": Vector3(13.4, 0, -6.0), "req": {"veg": 1}},
+	"veg_harvest": {"title": "Gartenhilfe", "titles": ["Gärtner", "Zweiter Gärtner", "Gemüse-Erntemaschine"], "max": 3, "base": 350.0, "growth": 2.2, "pos": Vector3(18.0, 0, 5.0), "req": {"veg": 1}},
+	"veg_beds": {"title": "Beete vergrößern", "max": 3, "base": 500.0, "growth": 2.4, "pos": Vector3(14.6, 0, 5.0), "req": {"carrots": 1}},
+	"veg_customers": {"title": "Marktschild: mehr Kundschaft", "max": 5, "base": 400.0, "growth": 1.9, "pos": Vector3(21.4, 0, 5.0), "req": {"veg_cashier": 1}},
+	"veg_prices": {"title": "Bio-Qualität (+25% Preis)", "max": 10, "base": 700.0, "growth": 1.9, "pos": Vector3(18.0, 0, 8.6), "req": {"carrots": 1}},
+	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta_belt": 1, "harvest": 4, "register3": 1, "prices": 3, "veg_harvest": 3, "veg_beds": 2}},
 }
 
 var money := 0.0
@@ -66,6 +77,12 @@ var fence: Node3D
 var belts := {}
 
 const ConveyorScript := preload("res://scripts/conveyor.gd")
+const VegShopScript := preload("res://scripts/veg_shop.gd")
+var veg_root: Node3D
+var veg_shop  # Gemüseladen (veg_shop.gd)
+var tomato_bed: Field
+var carrot_bed: Field
+var east_rail: Node3D
 
 var smoke_test := false
 var screenshot_dir := ""
@@ -137,7 +154,31 @@ func _camera_offset() -> Vector3:
 
 func clamp_to_map(p: Vector3) -> Vector3:
 	var max_z := FIELD_POS.z + field.size_z() + 1.2
-	return Vector3(clampf(p.x, -MAP_X, MAP_X), p.y, clampf(p.z, -11.0, max_z))
+	var max_x := MAP_X
+	if level("veg") > 0:
+		max_x = VEG_MAP_X
+		max_z = maxf(max_z, 10.0)
+	return Vector3(clampf(p.x, -MAP_X, max_x), p.y, clampf(p.z, -11.0, max_z))
+
+
+## Alle Beete, die gerade bepflanzt sind.
+func active_fields() -> Array[Field]:
+	var list: Array[Field] = [field]
+	if level("veg") > 0:
+		list.append(tomato_bed)
+		if level("carrots") > 0:
+			list.append(carrot_bed)
+	return list
+
+
+## Gemüsebeete, aus denen Gärtner ernten.
+func veg_fields() -> Array[Field]:
+	var list: Array[Field] = []
+	if level("veg") > 0:
+		list.append(tomato_bed)
+		if level("carrots") > 0:
+			list.append(carrot_bed)
+	return list
 
 
 # ------------------------------------------------------------ Werte & Stufen
@@ -151,7 +192,7 @@ func income_multiplier() -> float:
 
 
 func price(kind: String) -> float:
-	return BASE_PRICE[kind] * (1.0 + 0.25 * level("prices")) * income_multiplier()
+	return BASE_PRICE[kind] * (1.0 + 0.25 * level(PRICE_UPGRADE[kind])) * income_multiplier()
 
 
 func helper_capacity() -> int:
@@ -224,6 +265,9 @@ func buy_upgrade(id: String) -> void:
 		"pasta_belt":
 			_build_belt("pasta")
 			_sync_staff()
+		"veg", "carrots", "veg_beds", "veg_harvest", "veg_cashier":
+			_apply_veg()
+			_sync_staff()
 		"pasta":
 			pasta_machine.visible = true
 			pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT
@@ -271,19 +315,37 @@ func _apply_levels() -> void:
 	var has_pasta := level("pasta") > 0
 	pasta_machine.visible = has_pasta
 	pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT if has_pasta else Node.PROCESS_MODE_DISABLED
+	_apply_veg()
 	_sync_staff()
+
+
+## Gemüse-Gebiet ein- oder ausblenden und Beete passend zur Stufe bauen.
+func _apply_veg() -> void:
+	var open := level("veg") > 0
+	veg_root.visible = open
+	veg_root.process_mode = Node.PROCESS_MODE_INHERIT if open else Node.PROCESS_MODE_DISABLED
+	east_rail.visible = not open
+	tomato_bed.set_level(level("veg_beds"))
+	carrot_bed.visible = level("carrots") > 0
+	carrot_bed.set_level(level("veg_beds"))
 
 
 ## Personal passend zu den Stufen aufstellen. Erntehelfer werden zur Erntemaschine,
 ## Kellner werden überflüssig, sobald alle Maschinen ein Fließband haben.
 func _sync_staff() -> void:
 	counter.set_registers(register_count())
-	var want := {"farmer": 0, "harvester": 0, "waiter": 0}
+	var want := {"farmer": 0, "harvester": 0, "waiter": 0, "gardener": 0, "veg_harvester": 0, "veg_cashier": 0}
 	var h_lvl := level("harvest")
 	if h_lvl >= 3:
 		want["harvester"] = h_lvl - 2
 	else:
 		want["farmer"] = h_lvl
+	var v_lvl := level("veg_harvest")
+	if v_lvl >= 3:
+		want["veg_harvester"] = 1
+	else:
+		want["gardener"] = v_lvl
+	want["veg_cashier"] = level("veg_cashier")
 	var all_belts := level("service") >= 3 and (level("pasta") == 0 or level("pasta_belt") > 0)
 	if not all_belts:
 		want["waiter"] = mini(level("service"), 2)
@@ -295,7 +357,7 @@ func _sync_staff() -> void:
 	if level("register3") > 0:
 		cashier_regs.append(2)
 	# vorhandenes Personal behalten, überzähliges entfernen
-	var have := {"farmer": 0, "harvester": 0, "waiter": 0}
+	var have := {"farmer": 0, "harvester": 0, "waiter": 0, "gardener": 0, "veg_harvester": 0, "veg_cashier": 0}
 	var have_regs: Array[int] = []
 	for h: Helper in helpers.duplicate():
 		var keep := false
@@ -325,6 +387,10 @@ func _spawn_helper(role: String, register_index: int) -> void:
 	match role:
 		"farmer", "harvester":
 			h.position = Vector3(randf_range(-3, 3), 0, FIELD_POS.z + 1.0)
+		"gardener", "veg_harvester":
+			h.position = Vector3(VEG_X + randf_range(-2, 2), 0, -1.0)
+		"veg_cashier":
+			h.position = veg_shop.cash_zone
 		"waiter":
 			h.position = Vector3(randf_range(-1.0, 1.0), 0, -6.5)
 		"cashier":
@@ -341,12 +407,13 @@ func _in_zone(p: Vector3, center: Vector3, half: Vector2) -> bool:
 
 func _carrier_interact(c: Carrier, delta: float) -> void:
 	if c.can_harvest and not c.is_full():
-		if field.covers(c.position):
-			field.harvest_near(c)
+		for f in active_fields():
+			if f.covers(c.position):
+				f.harvest_near(c)
 	c.transfer_timer -= delta
 	if c.transfer_timer > 0.0:
 		return
-	var is_farm := c is Helper and ((c as Helper).role == "harvester" or (c as Helper).role == "farmer")
+	var is_farm := c is Helper and (c as Helper).role in ["harvester", "farmer", "gardener", "veg_harvester"]
 	var is_waiter := c is Helper and (c as Helper).role == "waiter"
 	for st in stations:
 		if not st.visible:
@@ -363,6 +430,14 @@ func _carrier_interact(c: Carrier, delta: float) -> void:
 			c.add_item(st.output_kind)
 			c.transfer_timer = Carrier.TRANSFER_INTERVAL
 			return
+	if level("veg") > 0 and _in_zone(c.position, veg_shop.drop_zone, Vector2(0.9, 0.7)):
+		for kind in ["tomato", "carrot"]:
+			if c.has_item(kind) and veg_shop.accepts(kind):
+				c.take_item(kind)
+				fly_item(kind, c.position + Vector3(0, 1.0, 0), veg_shop.piles[kind].global_position + Vector3(0, 0.3, 0))
+				veg_shop.put(kind)
+				c.transfer_timer = Carrier.TRANSFER_INTERVAL
+				return
 	if _in_zone(c.position, counter.drop_zone, Vector2(0.9, 0.7)):
 		for kind in ["pizza", "pasta"]:
 			if c.has_item(kind) and counter.has_room(kind):
@@ -374,8 +449,11 @@ func _carrier_interact(c: Carrier, delta: float) -> void:
 
 
 func _player_only(delta: float) -> void:
-	if money_pile.amount > 0.0 and _in_zone(player.position, money_pile.position, Vector2(1.1, 1.0)):
-		var got := money_pile.collect()
+	var pile := money_pile
+	if level("veg") > 0 and _in_zone(player.position, veg_shop.money_pile.position, Vector2(1.1, 1.0)):
+		pile = veg_shop.money_pile
+	if pile.amount > 0.0 and _in_zone(player.position, pile.position, Vector2(1.1, 1.0)):
+		var got := pile.collect()
 		money += got
 		popup_text(player.position, "+$" + Util.money_text(got), Color(0.6, 1.0, 0.5))
 	var standing_on: PayTile = null
@@ -487,18 +565,18 @@ func _build_world() -> void:
 	ground.position.y = -0.03
 	add_child(ground)
 	# Grasbüschel
-	for i in 120:
-		var p := Vector3(randf_range(-20, 20), 0, randf_range(-12, 22))
-		if absf(p.x) < 9.0 and p.z > -12.0 and p.z < 14.0:
+	for i in 160:
+		var p := Vector3(randf_range(-20, 36), 0, randf_range(-12, 22))
+		if p.x > -9.0 and p.x < 27.0 and p.z > -12.0 and p.z < 14.0:
 			continue
 		var tuft := Util.cylinder(0.0, 0.12, 0.3, grass.darkened(0.15), p + Vector3(0, 0.12, 0), 4)
 		add_child(tuft)
 	# Straße mit Bordstein und Mittellinie
-	add_child(Util.box(Vector3(70, 0.05, 3.4), Color(0.66, 0.67, 0.7), Vector3(0, 0.0, ROAD_Z), 0.1))
-	add_child(Util.box(Vector3(70, 0.12, 0.25), Color(0.92, 0.92, 0.92), Vector3(0, 0.03, ROAD_Z + 1.8), 0.4))
-	add_child(Util.box(Vector3(70, 0.12, 0.25), Color(0.92, 0.92, 0.92), Vector3(0, 0.03, ROAD_Z - 1.8), 0.4))
-	var x := -34.0
-	while x < 34.0:
+	add_child(Util.box(Vector3(100, 0.05, 3.4), Color(0.66, 0.67, 0.7), Vector3(8, 0.0, ROAD_Z), 0.1))
+	add_child(Util.box(Vector3(100, 0.12, 0.25), Color(0.92, 0.92, 0.92), Vector3(8, 0.03, ROAD_Z + 1.8), 0.4))
+	add_child(Util.box(Vector3(100, 0.12, 0.25), Color(0.92, 0.92, 0.92), Vector3(8, 0.03, ROAD_Z - 1.8), 0.4))
+	var x := -40.0
+	while x < 56.0:
 		add_child(Util.box(Vector3(1.2, 0.06, 0.14), Color(1, 1, 1), Vector3(x, 0.01, ROAD_Z), 0.5))
 		x += 2.4
 	# Holzboden der Küche mit Dielen-Textur und Rand
@@ -511,18 +589,24 @@ func _build_world() -> void:
 	floor_mesh.position = Vector3(0, 0.02, -6.1)
 	add_child(floor_mesh)
 	add_child(Util.box(Vector3(floor_size.x + 0.3, 0.06, floor_size.y + 0.3), Color(0.93, 0.86, 0.68), Vector3(0, -0.025, -6.1), 0.2))
-	# Geländer an den Seiten der Küche
+	# Geländer an den Seiten der Küche (rechts verschwindet es, sobald der Gemüseladen offen ist)
+	east_rail = Node3D.new()
+	add_child(east_rail)
 	for side in [-1.0, 1.0]:
+		var rail_parent: Node3D = self if side < 0 else east_rail
 		var gx: float = side * (floor_size.x * 0.5 + 0.05)
 		var z := -11.2
 		while z <= -1.2:
-			add_child(Util.box(Vector3(0.18, 0.7, 0.18), Color(0.95, 0.9, 0.75), Vector3(gx, 0.35, z), 0.3))
+			rail_parent.add_child(Util.box(Vector3(0.18, 0.7, 0.18), Color(0.95, 0.9, 0.75), Vector3(gx, 0.35, z), 0.3))
 			z += 1.0
-		add_child(Util.box(Vector3(0.14, 0.12, 10.2), Color(0.95, 0.9, 0.75), Vector3(gx, 0.62, -6.2), 0.4))
-	# Bäume und Büsche ringsum
-	for i in 26:
-		var side := -1.0 if i % 2 == 0 else 1.0
-		var p := Vector3(side * randf_range(10.8, 18.0), 0, randf_range(-11.0, 18.0))
+		rail_parent.add_child(Util.box(Vector3(0.14, 0.12, 10.2), Color(0.95, 0.9, 0.75), Vector3(gx, 0.62, -6.2), 0.4))
+	# Bäume und Büsche ringsum (rechts erst hinter dem Gemüse-Gebiet)
+	for i in 34:
+		var p := Vector3(-randf_range(10.8, 18.0), 0, randf_range(-11.0, 18.0))
+		if i % 3 == 1:
+			p = Vector3(randf_range(28.5, 36.0), 0, randf_range(-11.0, 18.0))
+		elif i % 3 == 2:
+			p = Vector3(randf_range(9.0, 28.0), 0, randf_range(12.5, 20.0))
 		if randf() < 0.5:
 			_add_tree(p)
 		else:
@@ -547,10 +631,46 @@ func _build_world() -> void:
 	add_child(counter)
 	counter.setup(self)
 
+	_build_veg_area()
+
 	money_pile = MoneyPile.new()
 	money_pile.position = Vector3(3.9, 0, -7.4)
 	add_child(money_pile)
 
+
+
+## Gemüse-Gebiet rechts: Holzboden, Marktstand, Tomaten- und Karottenbeet.
+## Bleibt unsichtbar, bis der Gemüseladen gekauft ist.
+func _build_veg_area() -> void:
+	veg_root = Node3D.new()
+	add_child(veg_root)
+	var floor_size := Vector2(15.0, 5.6)
+	var floor_mesh := MeshInstance3D.new()
+	var fp := PlaneMesh.new()
+	fp.size = floor_size
+	floor_mesh.mesh = fp
+	floor_mesh.material_override = Util.textured_mat(Util.plank_texture(), Vector2(floor_size.x / 4.0, floor_size.y / 4.0), Color(0.86, 0.84, 0.76))
+	floor_mesh.position = Vector3(VEG_X, 0.02, -8.6)
+	veg_root.add_child(floor_mesh)
+	veg_root.add_child(Util.box(Vector3(floor_size.x + 0.3, 0.06, floor_size.y + 0.3), Color(0.93, 0.86, 0.68), Vector3(VEG_X, -0.025, -8.6), 0.2))
+	veg_shop = VegShopScript.new()
+	veg_shop.position = Vector3(VEG_X, 0, -9.2)
+	veg_root.add_child(veg_shop)
+	veg_shop.setup(self)
+	tomato_bed = Field.new()
+	tomato_bed.game = self
+	tomato_bed.configure("tomato", 8, 5, 2)
+	tomato_bed.position = Vector3(VEG_X - 3.4, 0, -3.6)
+	veg_root.add_child(tomato_bed)
+	carrot_bed = Field.new()
+	carrot_bed.game = self
+	carrot_bed.configure("carrot", 8, 5, 2)
+	carrot_bed.position = Vector3(VEG_X + 3.4, 0, -3.6)
+	veg_root.add_child(carrot_bed)
+	# Schild am Eingang
+	var sign := Util.floor_label("GEMÜSEGARTEN", 56, Color(1, 1, 1))
+	sign.position = Vector3(VEG_X, 0.05, -5.2)
+	veg_root.add_child(sign)
 
 
 ## Fertige Modelle als Deko: Küchengeräte, Kisten, Tisch, Straßenlaternen.
@@ -568,8 +688,7 @@ func _add_decor() -> void:
 	Models.add(self, "city-builder-bits/firehydrant", 3.0, Vector3(12.5, 0, ROAD_Z + 2.2))
 	Models.add(self, "city-builder-bits/trash_A", 3.0, Vector3(-11.6, 0, ROAD_Z + 2.4))
 	for i in 10:
-		var side := -1.0 if i % 2 == 0 else 1.0
-		Models.add(self, "city-builder-bits/bush", randf_range(3.0, 4.5), Vector3(side * randf_range(10.5, 12.0), 0, randf_range(0.0, 14.0)), randf() * 360.0)
+		Models.add(self, "city-builder-bits/bush", randf_range(3.0, 4.5), Vector3(-randf_range(10.5, 12.0), 0, randf_range(0.0, 14.0)), randf() * 360.0)
 
 
 func _add_tree(p: Vector3) -> void:
@@ -785,7 +904,8 @@ func _smoke_step(delta: float) -> void:
 		2:
 			if smoke_time > 90.0:
 				var ok := total_sales > 0
-				print("%s Verkäufe=%d Geldstapel=%d Theke=%s" % ["SMOKE_TEST_OK" if ok else "SMOKE_TEST_FAIL", total_sales, int(money_pile.amount), str(counter.stock)])
+				ok = ok and veg_shop.sales > 0
+			print("%s Verkäufe=%d (Gemüse=%d) Geldstapel=%d Theke=%s Gemüse=%s Personal=%d" % ["SMOKE_TEST_OK" if ok else "SMOKE_TEST_FAIL", total_sales, veg_shop.sales, int(money_pile.amount), str(counter.stock), str(veg_shop.stock), helpers.size()])
 				Engine.time_scale = 1.0
 				get_tree().quit(0 if ok else 1)
 
@@ -798,7 +918,7 @@ func _screenshot_step(delta: float) -> void:
 		_save_shot("1_start")
 		money = 1000000.0
 		for _r in 3:
-			for id in ["capacity", "field", "harvest", "cashier", "service", "register2", "pasta", "customers"]:
+			for id in ["capacity", "field", "harvest", "cashier", "service", "register2", "pasta", "customers", "veg", "carrots", "veg_cashier", "veg_harvest"]:
 				if _is_unlocked(id):
 					buy_upgrade(id)
 		money = 870.0
@@ -810,6 +930,11 @@ func _screenshot_step(delta: float) -> void:
 		shot_index = 2
 	elif shot_index == 2 and shot_time > 15.5:
 		_save_shot("3_feld")
+		player.position = Vector3(VEG_X, 0, -4.5)
+		camera.position = player.position + _camera_offset()
+		shot_index = 3
+	elif shot_index == 3 and shot_time > 17.0:
+		_save_shot("4_gemuese")
 		get_tree().quit(0)
 
 

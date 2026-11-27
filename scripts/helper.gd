@@ -26,13 +26,21 @@ func _ready() -> void:
 			build_body(Color(0.45, 0.6, 0.3), Color(0.9, 0.8, 0.35))
 			speed = 4.6
 		"harvester":
-			_build_machine()
+			_build_machine(Color(0.86, 0.26, 0.22))
 		"waiter":
 			build_body(Color(0.95, 0.95, 0.95), Color(0.2, 0.2, 0.25))
 			speed = 5.4
 			can_harvest = false
 		"cashier":
 			build_body(Color(0.85, 0.3, 0.3), Color(0.85, 0.3, 0.3))
+			can_harvest = false
+		"gardener":
+			build_body(Color(0.35, 0.6, 0.85), Color(0.95, 0.85, 0.5))
+			speed = 4.8
+		"veg_harvester":
+			_build_machine(Color(0.3, 0.65, 0.35))
+		"veg_cashier":
+			build_body(Color(0.35, 0.7, 0.35), Color(0.98, 0.98, 0.98))
 			can_harvest = false
 	idle_spot = position
 
@@ -52,6 +60,40 @@ func _process(delta: float) -> void:
 			_waiter(delta)
 		"cashier":
 			walk_to(game.counter.cash_zone_of(register_index) + Vector3(0.3, 0, 0), 0.2, delta)
+		"gardener":
+			capacity = game.helper_capacity()
+			_gardener(delta)
+		"veg_harvester":
+			capacity = game.harvester_capacity()
+			speed = game.harvester_speed()
+			harvest_radius = 1.0
+			_gardener(delta)
+		"veg_cashier":
+			walk_to(game.veg_shop.cash_zone + Vector3(0.3, 0, 0), 0.2, delta)
+
+
+## Gärtner: erntet in den Gemüsebeeten und bringt alles zum Gemüseladen.
+func _gardener(delta: float) -> void:
+	if state == State.FETCH:
+		if is_full():
+			state = State.DELIVER
+			return
+		var plant := Vector3.INF
+		for f in game.veg_fields():
+			var p := f.nearest_grown(position)
+			if p != Vector3.INF and (plant == Vector3.INF or position.distance_squared_to(p) < position.distance_squared_to(plant)):
+				plant = p
+		if plant == Vector3.INF:
+			if stack.size() > 0:
+				state = State.DELIVER
+			return
+		walk_to(plant, 0.3, delta)
+	else:
+		if stack.is_empty():
+			state = State.FETCH
+			return
+		if walk_to(game.veg_shop.drop_zone, 0.5, delta) and not (game.veg_shop.accepts("tomato") or game.veg_shop.accepts("carrot")):
+			pass  # Laden voll: warten
 
 
 func _farmer(delta: float) -> void:
@@ -106,7 +148,7 @@ func _in_zone(p: Vector3) -> bool:
 
 
 ## Kleiner Mähdrescher: rote Karosserie, Fahrerkabine, gelbe Haspel vorn, Korntank hinten.
-func _build_machine() -> void:
+func _build_machine(paint: Color) -> void:
 	is_machine = true
 	stack_columns = 3
 	stack_spacing = 0.42
@@ -114,7 +156,7 @@ func _build_machine() -> void:
 	add_child(model)
 	body_root = Node3D.new()
 	model.add_child(body_root)
-	var red := Color(0.86, 0.26, 0.22)
+	var red := paint
 	body_root.add_child(Util.box(Vector3(1.3, 0.6, 1.9), red, Vector3(0, 0.6, 0.1), 0.3))
 	body_root.add_child(Util.box(Vector3(0.9, 0.62, 0.8), Color(0.72, 0.88, 0.98), Vector3(0, 1.2, -0.25), 0.3))
 	body_root.add_child(Util.box(Vector3(1.0, 0.1, 0.9), red.lightened(0.15), Vector3(0, 1.55, -0.25), 0.4))
