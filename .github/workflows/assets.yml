@@ -1,5 +1,5 @@
-# Holt kostenlose 3D-Modelle von Kenney (Lizenz CC0, frei nutzbar) und legt sie ins Projekt.
-# Läuft nur, wenn diese Datei geändert oder der Lauf von Hand gestartet wird.
+# Holt kostenlose 3D-Modelle (KayKit von Kay Lousberg, Lizenz CC0, frei nutzbar)
+# und legt sie ins Projekt. Läuft nur, wenn diese Datei geändert oder der Lauf von Hand gestartet wird.
 name: 3D-Modelle holen
 
 on:
@@ -17,38 +17,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Kenney-Pakete herunterladen
+      - name: KayKit-Pakete herunterladen
         run: |
           set -e
-          mkdir -p /tmp/kenney assets/kenney
-          for slug in food-kit car-kit nature-kit mini-characters furniture-kit survival-kit; do
-            echo "=== $slug"
-            curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" -o "/tmp/kenney/$slug.html" -w "HTTP %{http_code}, %{size_download} Bytes\n" "https://kenney.nl/assets/$slug" || true
-            grep -oE '[^"'"'"' ]*\.zip[^"'"'"' ]*' "/tmp/kenney/$slug.html" | sort -u | head -5 || true
-            url=$(grep -oE '(https://kenney\.nl)?/media/pages/assets/[^"'"'"' ]+\.zip' "/tmp/kenney/$slug.html" | head -1 || true)
-            case "$url" in /*) url="https://kenney.nl$url";; esac
-            if [ -z "$url" ]; then echo "keine ZIP gefunden für $slug"; continue; fi
-            echo "$url"
-            curl -sL -A "Mozilla/5.0" -o "/tmp/kenney/$slug.zip" "$url"
-            mkdir -p "/tmp/kenney/$slug"
-            unzip -q -o "/tmp/kenney/$slug.zip" -d "/tmp/kenney/$slug"
-            glbdir=$(find "/tmp/kenney/$slug" -type d -iname "GLB format" | head -1)
-            if [ -z "$glbdir" ]; then echo "kein GLB-Ordner in $slug"; find "/tmp/kenney/$slug" -maxdepth 3 | head -30; continue; fi
-            mkdir -p "assets/kenney/$slug"
-            cp -r "$glbdir"/. "assets/kenney/$slug/"
-            lic=$(find "/tmp/kenney/$slug" -iname "License*.txt" | head -1)
-            [ -n "$lic" ] && cp "$lic" "assets/kenney/$slug/License.txt"
-            echo "Dateien in $slug:"
-            ls "assets/kenney/$slug" | tr '\n' ' '
-            echo
+          mkdir -p /tmp/kk assets/kaykit
+          for pack in Restaurant-Bits City-Builder-Bits Furniture-Bits; do
+            echo "=== $pack"
+            git clone -q --depth 1 "https://github.com/KayKit-Game-Assets/KayKit-$pack-1.0.git" "/tmp/kk/$pack"
+            echo "Ordner:"; find "/tmp/kk/$pack" -maxdepth 3 -type d | grep -v "/.git" | head -30
+            src=$(find "/tmp/kk/$pack" -type d \( -iname "gltf" -o -iname "glb" \) | head -1)
+            if [ -z "$src" ]; then echo "kein gltf/glb-Ordner"; continue; fi
+            dest="assets/kaykit/$(echo $pack | tr 'A-Z' 'a-z')"
+            mkdir -p "$dest"
+            cp -r "$src"/. "$dest/"
+            find "/tmp/kk/$pack" -maxdepth 2 -iname "LICENSE*" -exec cp {} "$dest/" \;
+            echo "Dateien:"; ls "$dest" | tr '\n' ' '; echo
+            du -sh "$dest"
           done
-          du -sh assets/kenney/* || true
 
       - name: Ins Repository übernehmen
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/kenney
+          git add assets/kaykit
           if git diff --cached --quiet; then echo "Nichts Neues"; exit 0; fi
-          git commit -m "Kenney-3D-Modelle (CC0) hinzugefügt"
+          git commit -m "KayKit-3D-Modelle (CC0) hinzugefügt"
           git push
