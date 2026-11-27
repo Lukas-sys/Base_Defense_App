@@ -1,457 +1,562 @@
-class_name Main
+class_name Game
 extends Node3D
-## Holzwacht – das Herz des Spiels.
-## Baut die Welt auf, steuert Tag und Nacht, schickt Gegnerwellen und verwaltet
-## Rohstoffe und Upgrades.
+## Hofküche – das Herz des Spiels.
 ##
-## Spielablauf:
-##   Tag:   Holz hacken und Stein abbauen (einfach daneben stehen), Arbeiter
-##          anheuern, Axt/Waffe/Mauer verbessern, Türme bauen.
-##   Nacht: Monster greifen die Basis an. Spieler und Türme kämpfen automatisch.
-##          Sind alle Monster besiegt, beginnt der nächste Tag.
+## Kreislauf:  Weizen ernten -> zum Ofen bringen -> Pizzen zur Theke -> Kunden bedienen
+##             -> Geld einsammeln -> Geld auf Bezahlfelder bringen -> Upgrade/Personal/neue Maschine
+## Langzeit:   Jedes Upgrade hat mehrere Stufen. Ist alles ausgebaut, zieht man an einen
+##             neuen Standort: Es geht von vorn los, aber mit dauerhaft höheren Einnahmen.
 
-const MAP_RADIUS := 28.0
-const BASE_RADIUS := 4.5
-const HQ_HIT_RADIUS := 4.2
-const DAY_DURATION := 50.0
-const MAX_WORKERS := 6
-const TREE_COUNT := 45
-const ROCK_COUNT := 20
+const SAVE_PATH := "user://hofkueche_save.json"
+const ROAD_Z := -13.2
+const ROAD_START := -24.0
+const ROAD_END := 24.0
+const COUNTER_POS := Vector3(0, 0, -10)
+const QUEUE_SPACING := 3.4
+const FIELD_POS := Vector3(0, 0, 1.6)
+const MAP_X := 10.5
 
-const DAY_SKY := Color(0.55, 0.75, 0.95)
-const NIGHT_SKY := Color(0.03, 0.04, 0.1)
+const ITEM_NAMES := {"pizza": "Pizza", "pasta": "Nudeln"}
+const BASE_PRICE := {"pizza": 5.0, "pasta": 9.0}
 
-# Rohstoffe und Fortschritt
-var wood := 0
-var stone := 0
-var day := 1
-var is_night := false
-var phase_time := DAY_DURATION
-var day_duration := DAY_DURATION
-var enemies_to_spawn := 0
-var spawn_timer := 0.0
-var game_over := false
-var kills := 0
+## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
+const UPGRADES := {
+	"capacity": {"title": "Größerer Korb", "max": 10, "base": 15.0, "growth": 1.55, "pos": Vector3(-8.3, 0, -0.4), "req": {}},
+	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.6), "req": {"capacity": 1}},
+	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(-8.3, 0, 3.4), "req": {"field": 1}},
+	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 50.0, "growth": 1.7, "pos": Vector3(-8.3, 0, -8.6), "req": {"farmer": 1}},
+	"cashier": {"title": "Kassierer", "max": 1, "base": 160.0, "growth": 1.0, "pos": Vector3(-4.6, 0, -8.6), "req": {"farmer": 1}},
+	"waiter": {"title": "Kellner", "max": 3, "base": 220.0, "growth": 2.6, "pos": Vector3(8.3, 0, -0.4), "req": {"cashier": 1}},
+	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 140.0, "growth": 2.0, "pos": Vector3(8.3, 0, 3.4), "req": {"cashier": 1}},
+	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(3.5, 0, -5.0), "req": {"waiter": 1}},
+	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 300.0, "growth": 1.7, "pos": Vector3(8.3, 0, -8.6), "req": {"pasta": 1}},
+	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(8.3, 0, 7.2), "req": {"pasta": 1}},
+	"mower": {"title": "Erntemaschine (breiter ernten)", "max": 3, "base": 250.0, "growth": 3.0, "pos": Vector3(-8.3, 0, 7.2), "req": {"field": 2}},
+	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.6), "req": {"field": 3, "pasta": 1, "farmer": 3, "waiter": 2, "prices": 3}},
+}
 
-# Upgrade-Stufen
-var axe_level := 1
-var weapon_level := 1
-var wall_level := 1
-var hq_max_hp := 150.0
-var hq_hp := 150.0
+var money := 0.0
+var stars := 0
+var levels := {}
+var tile_paid := {}
+var tutorial_step := 0
+var total_sales := 0
 
-# Spielobjekte
 var player: Player
 var hud: Hud
 var camera: Camera3D
-var sun: DirectionalLight3D
-var torch: OmniLight3D
-var environment: Environment
-var hq: Node3D
-var wall_ring: Node3D
-var resource_nodes: Array[ResourceNode] = []
-var enemies: Array[Enemy] = []
-var workers: Array[Worker] = []
-var towers: Array[Tower] = []
-var tower_slots: Array[Vector3] = []
-var night_factor := 0.0
+var field: Field
+var counter: Counter
+var money_pile: MoneyPile
+var stations: Array[Station] = []
+var oven: Station
+var pasta_machine: Station
+var helpers: Array[Helper] = []
+var customers: Array[Customer] = []
+var tiles := {}
+var arrow: Node3D
+var spawn_timer := 1.0
+var save_timer := 0.0
+var autopilot_input := Vector2.ZERO
+var fence: Node3D
 
-# Automatischer Selbsttest (wird von GitHub Actions benutzt, siehe README)
 var smoke_test := false
+var screenshot_dir := ""
+var shot_time := 0.0
+var shot_index := 0
 var smoke_time := 0.0
+var smoke_phase := 0
 
 
 func _ready() -> void:
 	randomize()
 	smoke_test = "--smoke" in OS.get_cmdline_user_args()
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--screenshots="):
+			screenshot_dir = arg.substr(14)
+			smoke_test = true
 	if smoke_test:
-		day_duration = 3.0
-		phase_time = day_duration
 		Engine.time_scale = 4.0
 		print("Selbsttest gestartet")
-	for i in 6:
-		var angle := TAU * i / 6.0 + PI / 6.0
-		tower_slots.append(Vector3(cos(angle), 0, sin(angle)) * 7.0)
-	_build_environment()
-	_build_ground()
-	_build_base()
-	_spawn_resources()
+	else:
+		_load_game()
+	_build_world()
 	player = Player.new()
 	player.setup(self)
-	player.position = Vector3(0, 0, 2.0)
+	player.position = Vector3(0, 0, -2.5)
 	add_child(player)
 	camera = Camera3D.new()
-	camera.rotation_degrees = Vector3(-54, 0, 0)
-	camera.fov = 55.0
+	camera.rotation_degrees = Vector3(-56, 0, 0)
+	camera.fov = 52.0
 	add_child(camera)
 	camera.position = player.position + _camera_offset()
 	hud = Hud.new()
 	hud.setup(self)
 	add_child(hud)
-	hud.show_message("Lauf zu Bäumen und Felsen, um zu sammeln!", 4.0)
-	if smoke_test:
-		_smoke_buy_everything()
+	_apply_levels()
+	_refresh_tiles()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		save_game()
 
 
 func _process(delta: float) -> void:
 	camera.position = camera.position.lerp(player.position + _camera_offset(), 1.0 - exp(-6.0 * delta))
-	_update_lighting(delta)
-	if smoke_test:
+	player.capacity = 4 + 2 * level("capacity")
+	player.harvest_radius = 0.9 + 0.55 * level("mower")
+	_carrier_interact(player, delta)
+	for h in helpers:
+		_carrier_interact(h, delta)
+	_player_only(delta)
+	_update_customers(delta)
+	_update_tutorial()
+	_update_arrow()
+	save_timer += delta
+	if save_timer > 10.0:
+		save_timer = 0.0
+		save_game()
+	if screenshot_dir != "":
+		_screenshot_step(delta)
+	elif smoke_test:
 		_smoke_step(delta)
-	if game_over:
-		return
-	if not is_night:
-		phase_time -= delta
-		if phase_time <= 0.0:
-			_start_night()
-	else:
-		if enemies_to_spawn > 0:
-			spawn_timer -= delta
-			if spawn_timer <= 0.0:
-				_spawn_enemy()
-				enemies_to_spawn -= 1
-				spawn_timer = maxf(0.5, 2.0 - 0.1 * day)
-		elif enemies.is_empty():
-			_start_day()
 
 
 func _camera_offset() -> Vector3:
-	return Vector3(0, 16, 11.5)
+	return Vector3(0, 15.0, 10.0)
 
 
-# ---------------------------------------------------------------- Tag & Nacht
-
-func start_night_now() -> void:
-	if not is_night and not game_over:
-		phase_time = 0.0
+func clamp_to_map(p: Vector3) -> Vector3:
+	var max_z := FIELD_POS.z + field.size_z() + 1.2
+	return Vector3(clampf(p.x, -MAP_X, MAP_X), p.y, clampf(p.z, -11.0, max_z))
 
 
-func enemies_left() -> int:
-	return enemies.size() + enemies_to_spawn
+# ------------------------------------------------------------ Werte & Stufen
+
+func level(id: String) -> int:
+	return int(levels.get(id, 0))
 
 
-func _start_night() -> void:
-	is_night = true
-	enemies_to_spawn = 3 + day * 2
-	spawn_timer = 0.5
-	hud.show_message("Die Nacht bricht herein! Verteidige deine Basis!", 3.0)
+func income_multiplier() -> float:
+	return pow(2.0, stars)
 
 
-func _start_day() -> void:
-	is_night = false
-	var bonus := 5 + day * 3
-	wood += bonus
-	stone += bonus
-	day += 1
-	phase_time = day_duration
-	hq_hp = minf(hq_max_hp, hq_hp + hq_max_hp * 0.25)
-	player.hp = player.max_hp
-	hud.show_message("Nacht überlebt! Belohnung: +%d Holz, +%d Stein" % [bonus, bonus], 3.5)
+func price(kind: String) -> float:
+	return BASE_PRICE[kind] * (1.0 + 0.25 * level("prices")) * income_multiplier()
 
 
-func _update_lighting(delta: float) -> void:
-	var goal := 1.0 if is_night else 0.0
-	night_factor = lerpf(night_factor, goal, 1.0 - exp(-1.5 * delta))
-	sun.light_energy = lerpf(1.2, 0.12, night_factor)
-	environment.background_color = DAY_SKY.lerp(NIGHT_SKY, night_factor)
-	environment.ambient_light_energy = lerpf(0.7, 0.2, night_factor)
-	torch.light_energy = lerpf(0.0, 3.0, night_factor)
+func helper_capacity() -> int:
+	return 3 + level("capacity") / 2
 
 
-# --------------------------------------------------------------- Rohstoffe
-
-func add_resource(kind: String, amount: int, where: Vector3) -> void:
-	if kind == "wood":
-		wood += amount
-		popup_text(where, "+%d Holz" % amount, Color(0.95, 0.75, 0.45))
-	else:
-		stone += amount
-		popup_text(where, "+%d Stein" % amount, Color(0.85, 0.88, 0.95))
+func upgrade_cost(id: String) -> float:
+	var u: Dictionary = UPGRADES[id]
+	var c: float = u["base"] * pow(u["growth"], level(id)) * pow(1.6, stars)
+	return ceilf(c)
 
 
-func find_nearest_resource(from: Vector3, max_dist: float, kind := "") -> ResourceNode:
-	var best: ResourceNode = null
-	var best_dist := max_dist
-	for node in resource_nodes:
-		if not node.is_available():
-			continue
-		if kind != "" and node.kind != kind:
-			continue
-		var d := from.distance_to(node.position)
-		if d < best_dist:
-			best_dist = d
-			best = node
-	return best
+func upgrade_title(id: String) -> String:
+	var u: Dictionary = UPGRADES[id]
+	var t: String = u["title"]
+	if u["max"] > 1:
+		t += "  %d/%d" % [level(id) + 1, u["max"]]
+	return t
 
 
-func gather_interval() -> float:
-	return 0.9 / (1.0 + 0.4 * (axe_level - 1))
-
-
-func gather_yield() -> int:
-	return 1 + int((axe_level - 1) / 3.0)
-
-
-# ------------------------------------------------------------------- Kampf
-
-func find_nearest_enemy(from: Vector3, max_dist: float) -> Enemy:
-	var best: Enemy = null
-	var best_dist := max_dist
-	for enemy in enemies:
-		if enemy.dead:
-			continue
-		var d := from.distance_to(enemy.position)
-		if d < best_dist:
-			best_dist = d
-			best = enemy
-	return best
-
-
-func weapon_damage() -> float:
-	return 12.0 + 7.0 * (weapon_level - 1)
-
-
-func weapon_range() -> float:
-	return 4.5 + 0.25 * (weapon_level - 1)
-
-
-func weapon_cooldown() -> float:
-	return maxf(0.35, 0.7 - 0.03 * (weapon_level - 1))
-
-
-func tower_damage() -> float:
-	return 10.0 + 5.0 * (weapon_level - 1)
-
-
-func spawn_projectile(from: Vector3, target: Enemy, damage: float, color: Color) -> void:
-	var p := Projectile.new()
-	p.setup(target, damage, color)
-	p.position = from
-	add_child(p)
-
-
-func damage_hq(amount: float) -> void:
-	if game_over:
-		return
-	hq_hp -= amount
-	if hq_hp <= 0.0:
-		hq_hp = 0.0
-		game_over = true
-		hud.show_game_over(day)
-
-
-func on_enemy_killed(enemy: Enemy) -> void:
-	if enemy.dead:
-		return
-	enemy.dead = true
-	enemies.erase(enemy)
-	kills += 1
-	add_resource("stone", 1 + int(day / 3.0), enemy.position)
-	enemy.queue_free()
-
-
-func _spawn_enemy() -> void:
-	var enemy := Enemy.new()
-	enemy.setup(self, day)
-	var angle := randf() * TAU
-	enemy.position = Vector3(cos(angle), 0, sin(angle)) * MAP_RADIUS
-	add_child(enemy)
-	enemies.append(enemy)
-
-
-# ---------------------------------------------------------------- Upgrades
-# IDs: "worker", "axe", "weapon", "wall", "tower"
-
-## Kosten als Vector2i: x = Holz, y = Stein
-func get_cost(id: String) -> Vector2i:
-	match id:
-		"worker":
-			return Vector2i(12 + 10 * workers.size(), 4 * workers.size())
-		"axe":
-			return Vector2i(8 * axe_level, 4 * axe_level)
-		"weapon":
-			return Vector2i(6 * weapon_level, 8 * weapon_level)
-		"wall":
-			return Vector2i(12 * wall_level, 10 * wall_level)
-		"tower":
-			return Vector2i(20 + 15 * towers.size(), 15 + 12 * towers.size())
-	return Vector2i.ZERO
-
-
-func is_maxed(id: String) -> bool:
-	match id:
-		"worker":
-			return workers.size() >= MAX_WORKERS
-		"axe":
-			return axe_level >= 8
-		"weapon":
-			return weapon_level >= 10
-		"wall":
-			return wall_level >= 10
-		"tower":
-			return towers.size() >= tower_slots.size()
+func _is_unlocked(id: String) -> bool:
+	var u: Dictionary = UPGRADES[id]
+	if level(id) >= u["max"]:
+		return false
+	var req: Dictionary = u["req"]
+	for r in req:
+		if level(r) < req[r]:
+			return false
 	return true
 
 
-func can_buy(id: String) -> bool:
-	if game_over or is_maxed(id):
-		return false
-	var cost := get_cost(id)
-	return wood >= cost.x and stone >= cost.y
+# ------------------------------------------------------------------ Kaufen
 
-
-func upgrade_text(id: String) -> String:
-	var title := ""
+func buy_upgrade(id: String) -> void:
+	levels[id] = level(id) + 1
 	match id:
-		"worker":
-			title = "Arbeiter anheuern (%d/%d)" % [workers.size(), MAX_WORKERS]
-		"axe":
-			title = "Axt verbessern (Stufe %d)" % axe_level
-		"weapon":
-			title = "Waffe verbessern (Stufe %d)" % weapon_level
-		"wall":
-			title = "Mauer verstärken (Stufe %d)" % wall_level
-		"tower":
-			title = "Turm bauen (%d/%d)" % [towers.size(), tower_slots.size()]
-	if is_maxed(id):
-		return title + "\nMaximum erreicht"
-	var cost := get_cost(id)
-	return "%s\n%d Holz   %d Stein" % [title, cost.x, cost.y]
+		"capacity":
+			hud.show_message("Du kannst jetzt mehr tragen!")
+		"field":
+			field.set_level(level("field"))
+			_build_fence()
+			hud.show_message("Das Feld ist gewachsen!")
+		"farmer":
+			_spawn_helper("farmer")
+			hud.show_message("Ein Erntehelfer arbeitet jetzt für dich!")
+		"cashier":
+			_spawn_helper("cashier")
+			hud.show_message("Der Kassierer bedient jetzt die Kunden!")
+		"waiter":
+			_spawn_helper("waiter")
+			hud.show_message("Ein Kellner bringt das Essen zur Theke!")
+		"pasta":
+			pasta_machine.visible = true
+			pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT
+			hud.show_message("Nudelmaschine gebaut! Kunden bestellen jetzt auch Nudeln.")
+		"oven_speed", "pasta_speed":
+			hud.show_message("Die Maschine arbeitet schneller!")
+		"customers":
+			hud.show_message("Mehr Kunden kommen vorbei!")
+		"prices":
+			hud.show_message("Bessere Zutaten: Kunden zahlen mehr!")
+		"mower":
+			hud.show_message("Du erntest jetzt breiter!")
+		"new_location":
+			_move_to_new_location()
+			return
+	_refresh_tiles()
+	save_game()
 
 
-func buy(id: String) -> void:
-	if not can_buy(id):
-		return
-	var cost := get_cost(id)
-	wood -= cost.x
-	stone -= cost.y
-	match id:
-		"worker":
-			var w := Worker.new()
-			w.setup(self, "wood" if workers.size() % 2 == 0 else "stone")
-			w.position = Vector3(randf_range(-1.5, 1.5), 0, 2.5)
-			add_child(w)
-			workers.append(w)
-			hud.show_message("Ein neuer Arbeiter hilft dir!")
-		"axe":
-			axe_level += 1
-			hud.show_message("Axt verbessert: du sammelst schneller!")
-		"weapon":
-			weapon_level += 1
-			hud.show_message("Waffe verbessert: mehr Schaden für dich und die Türme!")
-		"wall":
-			wall_level += 1
-			hq_max_hp += 60.0
-			hq_hp = hq_max_hp
-			_build_wall()
-			hud.show_message("Mauer verstärkt und repariert!")
-		"tower":
-			var t := Tower.new()
-			t.setup(self)
-			t.position = tower_slots[towers.size()]
+func _move_to_new_location() -> void:
+	stars += 1
+	levels = {}
+	tile_paid = {}
+	money = 0.0
+	save_game()
+	get_tree().reload_current_scene()
+
+
+func _refresh_tiles() -> void:
+	for id in UPGRADES:
+		var show := _is_unlocked(id)
+		if show and not tiles.has(id):
+			var t := PayTile.new()
+			t.setup(self, id)
+			t.paid = float(tile_paid.get(id, 0.0))
+			t.position = UPGRADES[id]["pos"]
 			add_child(t)
-			towers.append(t)
-			hud.show_message("Turm gebaut!")
+			tiles[id] = t
+			if id == "new_location":
+				hud.show_message("Alles ausgebaut! Ein neuer Standort wartet auf dich.", 4.0)
+		elif not show and tiles.has(id):
+			tiles[id].queue_free()
+			tiles.erase(id)
+		elif show:
+			tiles[id].refresh()
 
 
-# ------------------------------------------------------------- Welt-Aufbau
-
-func _build_environment() -> void:
-	environment = Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = DAY_SKY
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.75, 0.8, 0.9)
-	environment.ambient_light_energy = 0.7
-	var world_env := WorldEnvironment.new()
-	world_env.environment = environment
-	add_child(world_env)
-	sun = DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-55, -35, 0)
-	sun.shadow_enabled = true
-	sun.light_energy = 1.2
-	add_child(sun)
-	torch = OmniLight3D.new()
-	torch.position = Vector3(0, 4.0, 0)
-	torch.light_color = Color(1.0, 0.65, 0.3)
-	torch.omni_range = 14.0
-	torch.light_energy = 0.0
-	add_child(torch)
+func _apply_levels() -> void:
+	field.set_level(level("field"))
+	_build_fence()
+	for i in level("farmer"):
+		_spawn_helper("farmer")
+	for i in level("waiter"):
+		_spawn_helper("waiter")
+	for i in level("cashier"):
+		_spawn_helper("cashier")
+	var has_pasta := level("pasta") > 0
+	pasta_machine.visible = has_pasta
+	pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT if has_pasta else Node.PROCESS_MODE_DISABLED
 
 
-func _build_ground() -> void:
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(MAP_RADIUS * 2.0 + 30.0, MAP_RADIUS * 2.0 + 30.0)
-	var ground := MeshInstance3D.new()
-	ground.mesh = plane
-	ground.material_override = Util.mat(Color(0.33, 0.55, 0.27))
-	add_child(ground)
-	# Lichtung um die Basis
-	var clearing := Util.cylinder(BASE_RADIUS + 4.0, BASE_RADIUS + 4.0, 0.02, Color(0.55, 0.47, 0.32), Vector3(0, 0.01, 0))
-	add_child(clearing)
+func _spawn_helper(role: String) -> void:
+	var h := Helper.new()
+	h.setup_role(self, role)
+	match role:
+		"farmer":
+			h.position = Vector3(randf_range(-3, 3), 0, 0.5)
+		"waiter":
+			h.position = Vector3(randf_range(-1.0, 1.0), 0, -5.5)
+		"cashier":
+			h.position = counter.cash_zone
+	add_child(h)
+	helpers.append(h)
 
 
-func _build_base() -> void:
-	hq = Node3D.new()
-	add_child(hq)
-	hq.add_child(Util.box(Vector3(3.0, 2.0, 3.0), Color(0.6, 0.42, 0.25), Vector3(0, 1.0, 0)))
-	var roof := MeshInstance3D.new()
-	var prism := PrismMesh.new()
-	prism.size = Vector3(3.6, 1.4, 3.6)
-	roof.mesh = prism
-	roof.material_override = Util.mat(Color(0.65, 0.2, 0.15))
-	roof.position = Vector3(0, 2.7, 0)
-	hq.add_child(roof)
-	hq.add_child(Util.box(Vector3(0.8, 1.2, 0.1), Color(0.3, 0.2, 0.1), Vector3(0, 0.6, 1.52)))
-	hq.add_child(Util.cylinder(0.05, 0.05, 1.6, Color(0.3, 0.2, 0.1), Vector3(1.2, 4.0, 1.2)))
-	var flag := Util.box(Vector3(0.8, 0.5, 0.05), Color(0.95, 0.8, 0.2), Vector3(1.6, 4.55, 1.2))
-	hq.add_child(flag)
-	_build_wall()
+# ------------------------------------------------------- Abgeben & Abholen
+
+func _in_zone(p: Vector3, center: Vector3, half: Vector2) -> bool:
+	return absf(p.x - center.x) <= half.x and absf(p.z - center.z) <= half.y
 
 
-func _build_wall() -> void:
-	if wall_ring != null:
-		wall_ring.queue_free()
-	wall_ring = Node3D.new()
-	add_child(wall_ring)
-	var height := 0.7 + 0.25 * wall_level
-	var color := Color(0.5, 0.34, 0.2) if wall_level < 4 else Color(0.55, 0.55, 0.6)
-	var segments := 28
-	var radius := 3.7
-	for i in segments:
-		# Lücke als Tor (zur Kamera hin)
-		if i == 6 or i == 7:
+func _carrier_interact(c: Carrier, delta: float) -> void:
+	if c.can_harvest and not c.is_full():
+		var local := c.position - FIELD_POS
+		if absf(local.x) < 6.0 and local.z > -1.0 and local.z < field.size_z() + 1.0:
+			field.harvest_near(c)
+	c.transfer_timer -= delta
+	if c.transfer_timer > 0.0:
+		return
+	var is_farmer := c is Helper and (c as Helper).role == "farmer"
+	var is_waiter := c is Helper and (c as Helper).role == "waiter"
+	for st in stations:
+		if not st.visible:
 			continue
-		var angle := TAU * i / segments
-		var post := Util.box(Vector3(0.5, height, 0.5), color, Vector3(cos(angle) * radius, height * 0.5, sin(angle) * radius))
-		post.rotation.y = -angle
-		wall_ring.add_child(post)
+		if not is_waiter and _in_zone(c.position, st.input_zone, Vector2(0.9, 0.8)) and c.has_item(st.input_kind) and st.wants_input():
+			c.take_item(st.input_kind)
+			st.put_input()
+			c.transfer_timer = Carrier.TRANSFER_INTERVAL
+			return
+		if not is_farmer and _in_zone(c.position, st.output_zone, Vector2(0.9, 0.8)) and not c.is_full() and st.output_stock > 0:
+			st.take_output()
+			c.add_item(st.output_kind)
+			c.transfer_timer = Carrier.TRANSFER_INTERVAL
+			return
+	if _in_zone(c.position, counter.drop_zone, Vector2(0.9, 0.7)):
+		for kind in ["pizza", "pasta"]:
+			if c.has_item(kind) and counter.has_room(kind):
+				c.take_item(kind)
+				counter.put(kind)
+				c.transfer_timer = Carrier.TRANSFER_INTERVAL
+				return
 
 
-func _spawn_resources() -> void:
-	for i in TREE_COUNT + ROCK_COUNT:
-		var node := ResourceNode.new()
-		node.setup("wood" if i < TREE_COUNT else "stone")
-		node.position = _free_spot()
-		add_child(node)
-		resource_nodes.append(node)
+func _player_only(delta: float) -> void:
+	if money_pile.amount > 0.0 and _in_zone(player.position, money_pile.position, Vector2(1.1, 1.0)):
+		var got := money_pile.collect()
+		money += got
+		popup_text(player.position, "+$" + Util.money_text(got), Color(0.6, 1.0, 0.5))
+	var standing_on: PayTile = null
+	for id in tiles:
+		var t: PayTile = tiles[id]
+		if t.contains(player.position):
+			standing_on = t
+			break
+	if standing_on != null:
+		standing_on.pay_step(delta)
 
 
-## Sucht einen zufälligen Platz, der nicht zu nah an der Basis oder anderen Objekten ist.
-func _free_spot() -> Vector3:
-	var pos := Vector3.ZERO
-	for attempt in 30:
-		var angle := randf() * TAU
-		var dist := randf_range(BASE_RADIUS + 5.0, MAP_RADIUS - 2.0)
-		pos = Vector3(cos(angle) * dist, 0, sin(angle) * dist)
-		var ok := true
-		for other in resource_nodes:
-			if other.position.distance_to(pos) < 2.2:
-				ok = false
-				break
-		if ok:
-			return pos
-	return pos
+func station_needing_input() -> Station:
+	var best: Station = null
+	for st in stations:
+		if not st.visible or not st.wants_input():
+			continue
+		if best == null or st.input_stock < best.input_stock:
+			best = st
+	return best
+
+
+func station_with_output() -> Station:
+	var best: Station = null
+	for st in stations:
+		if not st.visible or st.output_stock == 0:
+			continue
+		if not counter.has_room(st.output_kind):
+			continue
+		if best == null or st.output_stock > best.output_stock:
+			best = st
+	return best
+
+
+# ------------------------------------------------------------------ Kunden
+
+func _update_customers(delta: float) -> void:
+	var max_queue := 2 + level("customers")
+	spawn_timer -= delta
+	if spawn_timer <= 0.0 and customers.size() < max_queue:
+		spawn_timer = 5.0 / (1.0 + 0.35 * level("customers"))
+		_spawn_customer()
+	for i in customers.size():
+		customers[i].target_x = COUNTER_POS.x - i * QUEUE_SPACING
+	var staffed := level("cashier") > 0 or _in_zone(player.position, counter.cash_zone, Vector2(0.9, 0.7))
+	var front: Customer = customers[0] if customers.size() > 0 else null
+	counter.serve(front, staffed, delta)
+
+
+func _spawn_customer() -> void:
+	var order := {}
+	var count := randi_range(1, 3 + level("customers") / 2)
+	var kinds := ["pizza"]
+	if level("pasta") > 0:
+		kinds.append("pasta")
+	for i in count:
+		var k: String = kinds[randi() % kinds.size()]
+		order[k] = order.get(k, 0) + 1
+	var c := Customer.new()
+	c.setup(self, order)
+	c.position = Vector3(ROAD_START, 0, ROAD_Z)
+	c.target_x = ROAD_START
+	add_child(c)
+	customers.append(c)
+
+
+func on_customer_paid(c: Customer) -> void:
+	customers.erase(c)
+	money_pile.add(c.paid)
+	total_sales += 1
+	popup_text(money_pile.position, "+$" + Util.money_text(c.paid), Color(0.6, 1.0, 0.5))
+	c.leave()
+
+
+# ------------------------------------------------------- Anleitung & Pfeil
+
+func goal_text() -> String:
+	match tutorial_step:
+		0:
+			return "Lauf durchs Weizenfeld, um zu ernten"
+		1:
+			return "Bring den Weizen zum Ofen (weißer Rahmen)"
+		2:
+			return "Hol die fertigen Pizzen ab (grüner Rahmen)"
+		3:
+			return "Leg die Pizzen auf die Theke"
+		4:
+			return "Stell dich an die Kasse und bediene die Kunden"
+		5:
+			return "Sammle dein Geld ein"
+		6:
+			return "Stell dich auf das Bezahlfeld, um es zu kaufen"
+	return ""
+
+
+func _update_tutorial() -> void:
+	var done := false
+	match tutorial_step:
+		0:
+			done = player.has_item("wheat")
+		1:
+			done = oven.input_stock > 0 or oven.output_stock > 0
+		2:
+			done = player.has_item("pizza")
+		3:
+			done = counter.stock["pizza"] > 0
+		4:
+			done = money_pile.amount > 0.0
+		5:
+			done = money > 0.0
+		6:
+			done = level("capacity") > 0
+	if done:
+		tutorial_step += 1
+
+
+func _arrow_target() -> Vector3:
+	match tutorial_step:
+		0:
+			return field.nearest_grown(player.position)
+		1:
+			return oven.input_zone
+		2:
+			return oven.output_zone
+		3:
+			return counter.drop_zone
+		4:
+			return counter.cash_zone
+		5:
+			return money_pile.position
+		6:
+			return UPGRADES["capacity"]["pos"]
+	# Danach: auf das günstigste bezahlbare Feld zeigen
+	if money_pile.amount > 0.0 and money < 1.0:
+		return money_pile.position
+	var best := Vector3.INF
+	var best_cost := INF
+	for id in tiles:
+		var t: PayTile = tiles[id]
+		var left := t.cost - t.paid
+		if left <= money and left < best_cost:
+			best_cost = left
+			best = t.position
+	return best
+
+
+func _update_arrow() -> void:
+	var target := _arrow_target()
+	arrow.visible = target != Vector3.INF
+	if arrow.visible:
+		arrow.position = target + Vector3(0, 2.2 + absf(sin(Time.get_ticks_msec() * 0.005)) * 0.5, 0)
+
+
+# --------------------------------------------------------------- Welt-Aufbau
+
+func _build_world() -> void:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.62, 0.78, 0.55)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.85, 0.85, 0.9)
+	env.ambient_light_energy = 0.75
+	var we := WorldEnvironment.new()
+	we.environment = env
+	add_child(we)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-60, -30, 0)
+	sun.shadow_enabled = true
+	sun.light_energy = 1.0
+	add_child(sun)
+
+	var tint := [Color(0.62, 0.78, 0.5), Color(0.78, 0.75, 0.5), Color(0.55, 0.72, 0.7), Color(0.8, 0.65, 0.55)][stars % 4]
+	add_child(Util.box(Vector3(80, 0.1, 80), tint, Vector3(0, -0.06, 0)))
+	# Straße
+	add_child(Util.box(Vector3(60, 0.04, 3.2), Color(0.55, 0.56, 0.6), Vector3(0, 0.0, ROAD_Z)))
+	add_child(Util.box(Vector3(60, 0.05, 0.12), Color(0.95, 0.95, 0.95), Vector3(0, 0.0, ROAD_Z - 1.45)))
+	# Holzboden der Küche
+	add_child(Util.box(Vector3(22, 0.06, 11.5), Color(0.85, 0.7, 0.5), Vector3(0, 0.0, -6.0)))
+	# Büsche als Deko
+	for i in 14:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var bush := Util.sphere(randf_range(0.8, 1.5), Color(0.3, 0.6, 0.3), Vector3(side * randf_range(12.5, 16.0), 0.3, randf_range(-10.0, 14.0)))
+		bush.scale = Vector3(1, 0.7, 1)
+		add_child(bush)
+
+	field = Field.new()
+	field.position = FIELD_POS
+	add_child(field)
+
+	oven = _make_station("oven", "pizza", Vector3(-7.0, 0, -5.0), Color(0.85, 0.35, 0.25))
+	oven.base_time = 1.6
+	pasta_machine = _make_station("pasta", "pasta", Vector3(3.5, 0, -5.0), Color(0.95, 0.8, 0.3))
+	pasta_machine.base_time = 2.2
+
+	counter = Counter.new()
+	counter.position = COUNTER_POS
+	add_child(counter)
+	counter.setup(self)
+
+	money_pile = MoneyPile.new()
+	money_pile.position = Vector3(4.4, 0, -8.6)
+	add_child(money_pile)
+
+	arrow = Node3D.new()
+	var shaft := Util.box(Vector3(0.35, 0.7, 0.35), Color(0.5, 0.75, 1.0), Vector3(0, 0.7, 0))
+	arrow.add_child(shaft)
+	var head := MeshInstance3D.new()
+	var prism := PrismMesh.new()
+	prism.size = Vector3(0.9, 0.6, 0.4)
+	head.mesh = prism
+	head.material_override = Util.mat(Color(0.5, 0.75, 1.0))
+	head.rotation_degrees = Vector3(0, 0, 180)
+	head.position = Vector3(0, 0.1, 0)
+	arrow.add_child(head)
+	add_child(arrow)
+
+
+func _make_station(id: String, out_kind: String, pos: Vector3, color: Color) -> Station:
+	var st := Station.new()
+	st.position = pos
+	add_child(st)
+	st.setup(self, id, out_kind, color)
+	stations.append(st)
+	return st
+
+
+func _build_fence() -> void:
+	if fence != null:
+		fence.queue_free()
+	fence = Node3D.new()
+	add_child(fence)
+	var c := Color(0.92, 0.85, 0.65)
+	var z0 := FIELD_POS.z - 0.6
+	var z1 := FIELD_POS.z + field.size_z() + 0.2
+	var x := Field.COLUMNS * Field.SPACING * 0.5 + 0.5
+	for side in [-1.0, 1.0]:
+		var z := z0
+		while z <= z1:
+			fence.add_child(Util.box(Vector3(0.18, 0.6, 0.18), c, Vector3(side * x, 0.3, z)))
+			z += 1.0
+		fence.add_child(Util.box(Vector3(0.08, 0.1, z1 - z0), c, Vector3(side * x, 0.45, (z0 + z1) * 0.5)))
+	var xx := -x
+	while xx <= x:
+		fence.add_child(Util.box(Vector3(0.18, 0.6, 0.18), c, Vector3(xx, 0.3, z1)))
+		xx += 1.0
+	fence.add_child(Util.box(Vector3(x * 2.0, 0.1, 0.08), c, Vector3(0, 0.45, z1)))
 
 
 func popup_text(where: Vector3, text: String, color: Color) -> void:
@@ -461,8 +566,8 @@ func popup_text(where: Vector3, text: String, color: Color) -> void:
 	label.outline_modulate = Color(0, 0, 0, 0.8)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.font_size = 56
-	label.outline_size = 10
+	label.font_size = 72
+	label.outline_size = 14
 	label.pixel_size = 0.01
 	label.position = where + Vector3(0, 2.4, 0)
 	add_child(label)
@@ -473,19 +578,104 @@ func popup_text(where: Vector3, text: String, color: Color) -> void:
 	t.chain().tween_callback(label.queue_free)
 
 
-# ---------------------------------------------------------- Selbsttest (CI)
+# -------------------------------------------------------------- Spielstand
 
-func _smoke_buy_everything() -> void:
-	wood = 5000
-	stone = 5000
-	for id in ["worker", "worker", "axe", "weapon", "wall", "tower", "tower"]:
-		buy(id)
-	print("Selbsttest: Arbeiter=%d Türme=%d Axt=%d Waffe=%d Mauer=%d" % [workers.size(), towers.size(), axe_level, weapon_level, wall_level])
+func save_game() -> void:
+	if smoke_test:
+		return
+	var data := {
+		"version": 1,
+		"money": money,
+		"stars": stars,
+		"levels": levels,
+		"tile_paid": tile_paid,
+		"tutorial": tutorial_step,
+		"sales": total_sales,
+	}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(data))
 
+
+func _load_game() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var text := FileAccess.get_file_as_string(SAVE_PATH)
+	var data = JSON.parse_string(text)
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	money = float(data.get("money", 0.0))
+	stars = int(data.get("stars", 0))
+	levels = data.get("levels", {})
+	tile_paid = data.get("tile_paid", {})
+	tutorial_step = int(data.get("tutorial", 0))
+	total_sales = int(data.get("sales", 0))
+
+
+func reset_save() -> void:
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	get_tree().reload_current_scene()
+
+
+# ------------------------------------------------------- Selbsttest (CI)
 
 func _smoke_step(delta: float) -> void:
 	smoke_time += delta
-	if smoke_time > 60.0:
-		print("SMOKE_TEST_OK Tag=%d Besiegt=%d Holz=%d Stein=%d Basis=%d" % [day, kills, wood, stone, int(hq_hp)])
-		Engine.time_scale = 1.0
-		get_tree().quit()
+	match smoke_phase:
+		0:
+			# Spieler läuft ins Feld und muss Weizen ernten
+			autopilot_input = (Vector2(0, 4.0) - Vector2(player.position.x, player.position.z)).normalized()
+			if player.has_item("wheat"):
+				autopilot_input = Vector2.ZERO
+				print("Selbsttest: Spieler hat geerntet (%d Weizen)" % player.count_item("wheat"))
+				smoke_phase = 1
+			elif smoke_time > 20.0:
+				print("SMOKE_TEST_FAIL Spieler konnte nicht ernten")
+				get_tree().quit(1)
+		1:
+			money = 1000000.0
+			for _r in 12:
+				for id in UPGRADES:
+					if id != "new_location" and _is_unlocked(id):
+						buy_upgrade(id)
+			print("Selbsttest: Stufen %s" % str(levels))
+			print("Selbsttest: Personal=%d Bezahlfelder=%d" % [helpers.size(), tiles.size()])
+			player.position = Vector3(-9.5, 0, 9.0)
+			smoke_phase = 2
+		2:
+			if smoke_time > 90.0:
+				var ok := total_sales > 0
+				print("%s Verkäufe=%d Geldstapel=%d Theke=%s" % ["SMOKE_TEST_OK" if ok else "SMOKE_TEST_FAIL", total_sales, int(money_pile.amount), str(counter.stock)])
+				Engine.time_scale = 1.0
+				get_tree().quit(0 if ok else 1)
+
+
+# ------------------------------------------- Bildschirmfotos (für die Entwicklung)
+
+func _screenshot_step(delta: float) -> void:
+	shot_time += delta
+	if shot_index == 0 and shot_time > 1.0:
+		_save_shot("1_start")
+		money = 1000000.0
+		for _r in 3:
+			for id in ["capacity", "field", "farmer", "cashier", "waiter", "pasta", "customers"]:
+				if _is_unlocked(id):
+					buy_upgrade(id)
+		money = 870.0
+		shot_index = 1
+	elif shot_index == 1 and shot_time > 14.0:
+		_save_shot("2_kueche")
+		player.position = Vector3(0, 0, 5.0)
+		camera.position = player.position + _camera_offset()
+		shot_index = 2
+	elif shot_index == 2 and shot_time > 15.5:
+		_save_shot("3_feld")
+		get_tree().quit(0)
+
+
+func _save_shot(shot_name: String) -> void:
+	var img := get_viewport().get_texture().get_image()
+	var path := screenshot_dir.path_join(shot_name + ".png")
+	img.save_png(path)
+	print("Bildschirmfoto gespeichert: ", path)

@@ -1,5 +1,5 @@
 # Baut das Spiel automatisch bei jedem Hochladen (Push):
-#  1. Selbsttest: Das Spiel läuft eine Minute ohne Bildschirm und muss fehlerfrei bleiben.
+#  1. Selbsttest: Das Spiel läuft im Zeitraffer ohne Bildschirm und muss fehlerfrei bleiben.
 #  2. Android-APK und Windows-Version werden gebaut und unter "Artifacts" zum Download angeboten.
 name: Spiel testen und bauen
 
@@ -36,7 +36,7 @@ jobs:
       - name: Projekt importieren
         run: timeout 300 godot --headless --import || true
 
-      - name: Selbsttest (Spiel 1 Minute automatisch laufen lassen)
+      - name: Selbsttest (Spiel automatisch laufen lassen)
         run: |
           timeout 300 godot --headless --path . -- --smoke 2>&1 | tee smoke.log
           if grep -E "SCRIPT ERROR|Parse Error|Compile Error" smoke.log; then
@@ -45,6 +45,21 @@ jobs:
           fi
           grep -q "SMOKE_TEST_OK" smoke.log
 
+      - name: Bildschirmfotos aufnehmen (nur zur Kontrolle)
+        continue-on-error: true
+        run: |
+          apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
+          mkdir -p screenshots
+          timeout 120 xvfb-run -a -s "-screen 0 720x1280x24" godot --rendering-driver opengl3 --resolution 720x1280 --path . -- --screenshots=$PWD/screenshots 2>&1 | grep -v "^$" | tail -20
+          ls -la screenshots
+
+      - name: Bildschirmfotos hochladen
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bildschirmfotos
+          path: screenshots/
+
       - name: Android-APK bauen
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
@@ -52,25 +67,25 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p build/android
-          godot --headless --export-debug "Android" build/android/Holzwacht.apk
+          godot --headless --export-debug "Android" build/android/Hofkueche.apk
           ls -la build/android
-          test -f build/android/Holzwacht.apk
+          test -f build/android/Hofkueche.apk
 
       - name: Windows-Version bauen
         run: |
           mkdir -p build/windows
-          godot --headless --export-release "Windows" build/windows/Holzwacht.exe
+          godot --headless --export-release "Windows" build/windows/Hofkueche.exe
           ls -la build/windows
-          test -f build/windows/Holzwacht.exe
+          test -f build/windows/Hofkueche.exe
 
       - name: APK zum Download bereitstellen
         uses: actions/upload-artifact@v4
         with:
-          name: Holzwacht-Android
-          path: build/android/Holzwacht.apk
+          name: Hofkueche-Android
+          path: build/android/Hofkueche.apk
 
       - name: Windows-Version zum Download bereitstellen
         uses: actions/upload-artifact@v4
         with:
-          name: Holzwacht-Windows
-          path: build/windows/Holzwacht.exe
+          name: Hofkueche-Windows
+          path: build/windows/Hofkueche.exe

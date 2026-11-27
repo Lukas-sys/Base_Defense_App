@@ -1,10 +1,10 @@
 class_name Joystick
 extends Control
-## Virtueller Joystick für Touchscreens: irgendwo in der linken Bildschirmhälfte
-## den Finger auflegen und ziehen. Am PC geht das auch mit gedrückter Maustaste.
+## Schwebender Joystick: Finger irgendwo auf den Bildschirm legen und ziehen.
+## Am PC geht das genauso mit gedrückter linker Maustaste.
 
-const RADIUS := 80.0
-const KNOB_RADIUS := 34.0
+const RADIUS := 90.0
+const KNOB_RADIUS := 38.0
 
 var output := Vector2.ZERO
 var touch_index := -1
@@ -19,7 +19,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
-		if touch.pressed and touch_index == -1 and touch.position.x < get_viewport_rect().size.x * 0.5:
+		if touch.pressed and touch_index == -1:
 			touch_index = touch.index
 			center = touch.position
 			knob = center
@@ -42,11 +42,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	var c := center
-	var k := knob
 	if touch_index == -1:
-		c = Vector2(150, get_viewport_rect().size.y - 150)
-		k = c
-	draw_circle(c, RADIUS, Color(1, 1, 1, 0.12))
-	draw_arc(c, RADIUS, 0.0, TAU, 48, Color(1, 1, 1, 0.45), 3.0)
-	draw_circle(k, KNOB_RADIUS, Color(1, 1, 1, 0.5))
+		return
+	draw_circle(center, RADIUS, Color(0, 0, 0, 0.15))
+	draw_arc(center, RADIUS, 0.0, TAU, 48, Color(1, 1, 1, 0.6), 4.0)
+	draw_circle(knob, KNOB_RADIUS, Color(1, 1, 1, 0.75))
