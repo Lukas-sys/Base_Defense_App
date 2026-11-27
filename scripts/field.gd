@@ -4,7 +4,6 @@ extends Node3D
 ## (wenn noch Platz im Korb ist). Abgeerntete Pflanzen wachsen nach einiger Zeit wieder nach.
 
 const SPACING := 0.62
-const REGROW_TIME := 5.5
 
 var game: Game
 var kind := "wheat"
@@ -12,6 +11,7 @@ var columns := 17
 var base_rows := 5
 var rows_per_level := 3
 var plant_scale := 1.5
+var regrow_time := 16.0  # Sekunden, bis eine Pflanze nachgewachsen ist
 var rows := 5
 var fence: Node3D
 var grown: PackedByteArray = PackedByteArray()
@@ -48,6 +48,7 @@ func configure(crop: String, cols: int, start_rows: int, per_level: int) -> void
 	base_rows = start_rows
 	rows_per_level = per_level
 	plant_scale = 1.5 if crop == "wheat" else 1.25
+	regrow_time = 16.0 if crop == "wheat" else 20.0
 
 
 ## Größe des Feldes festlegen (mehr Reihen pro Stufe).
@@ -132,7 +133,7 @@ func harvest_near(carrier: Carrier) -> void:
 		var d := positions[i] - local
 		if d.x * d.x + d.z * d.z <= r2:
 			grown[i] = 0
-			regrow[i] = REGROW_TIME
+			regrow[i] = regrow_time
 			grown_count -= 1
 			_set_plant(i, 0.08)
 			carrier.harvest_bits += 1
@@ -170,4 +171,4 @@ func _process(delta: float) -> void:
 			grown_count += 1
 			_set_plant(i, 1.0)
 		else:
-			_set_plant(i, 1.0 - regrow[i] / REGROW_TIME)
+			_set_plant(i, 1.0 - regrow[i] / regrow_time)

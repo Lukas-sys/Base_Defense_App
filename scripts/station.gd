@@ -3,8 +3,8 @@ extends Node3D
 ## Eine Maschine, die Zutaten verarbeitet: z. B. Weizen -> Pizza (Ofen) oder Weizen -> Nudeln.
 ## Vorne wird abgegeben (Eingang), seitlich liegt das fertige Essen (Ausgang).
 
-const MAX_INPUT := 30
-const MAX_OUTPUT := 24
+const MAX_INPUT := 80
+const MAX_OUTPUT := 40
 
 var game: Game
 var id := "oven"
@@ -108,7 +108,7 @@ func setup(g: Game, station_id: String, out_kind: String, color: Color) -> void:
 
 
 func process_time() -> float:
-	return base_time / (1.0 + 0.35 * game.level(id + "_speed"))
+	return base_time / (1.0 + 0.4 * game.level(id + "_speed"))
 
 
 func wants_input() -> bool:

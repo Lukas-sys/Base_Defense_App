@@ -3,8 +3,8 @@ extends Node3D
 ## Fußgänger stellen sich hinten auf dem Gehweg an und kaufen ein.
 ## (Ohne class_name, damit Updates ohne neues APK funktionieren.)
 
-const SERVE_INTERVAL := 0.12
-const MAX_STOCK := 40
+const SERVE_INTERVAL := 0.15
+const MAX_STOCK := 80
 const QUEUE_SPACING := 1.25
 const LANE_Z := -1.6  # Gehweg hinter dem Stand (relativ zum Stand)
 const PedestrianScript := preload("res://scripts/pedestrian.gd")
@@ -97,7 +97,7 @@ func _process(delta: float) -> void:
 	var max_queue: int = 5 + game.level("veg_customers")
 	spawn_timer -= delta
 	if spawn_timer <= 0.0 and shoppers.size() < max_queue:
-		spawn_timer = 1.6 / (1.0 + 0.3 * game.level("veg_customers"))
+		spawn_timer = 2.0 / (1.0 + 0.35 * game.level("veg_customers"))
 		_spawn_shopper()
 	for i in shoppers.size():
 		shoppers[i].target_x = position.x + i * QUEUE_SPACING

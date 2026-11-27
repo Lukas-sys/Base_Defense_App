@@ -3,8 +3,8 @@ extends Node3D
 ## Die Theke: Essen wird hier abgelegt. Steht jemand an der Kasse, wird der vorderste
 ## Kunde bedient und das Geld landet auf dem Geldstapel.
 
-const SERVE_INTERVAL := 0.12
-const MAX_STOCK := 40
+const SERVE_INTERVAL := 0.15
+const MAX_STOCK := 80
 
 var game: Game
 var stock := {"pizza": 0, "pasta": 0}

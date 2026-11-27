@@ -85,6 +85,7 @@ var carrot_bed: Field
 var east_rail: Node3D
 
 var smoke_test := false
+var balance_mode := false
 var screenshot_dir := ""
 var shot_time := 0.0
 var shot_index := 0
@@ -99,6 +100,9 @@ func _ready() -> void:
 		if arg.begins_with("--screenshots="):
 			screenshot_dir = arg.substr(14)
 			smoke_test = true
+	var balance := "--balance" in OS.get_cmdline_user_args()
+	if balance:
+		smoke_test = true
 	if smoke_test:
 		Engine.time_scale = 4.0
 		print("Selbsttest gestartet")
@@ -122,6 +126,12 @@ func _ready() -> void:
 	add_child(hud)
 	_apply_levels()
 	_refresh_tiles()
+	if balance:
+		Engine.time_scale = 6.0
+		var bot: Node = preload("res://scripts/balance_bot.gd").new()
+		bot.set("game", self)
+		add_child(bot)
+		balance_mode = true
 
 
 func _notification(what: int) -> void:
@@ -131,7 +141,7 @@ func _notification(what: int) -> void:
 
 func _process(delta: float) -> void:
 	camera.position = camera.position.lerp(player.position + _camera_offset(), 1.0 - exp(-6.0 * delta))
-	player.capacity = 6 + 3 * level("capacity")
+	player.capacity = 8 + 4 * level("capacity")
 	player.harvest_radius = 0.9 + 0.55 * level("mower")
 	_carrier_interact(player, delta)
 	for h in helpers:
@@ -144,7 +154,7 @@ func _process(delta: float) -> void:
 		save_game()
 	if screenshot_dir != "":
 		_screenshot_step(delta)
-	elif smoke_test:
+	elif smoke_test and not balance_mode:
 		_smoke_step(delta)
 
 
@@ -503,7 +513,7 @@ func _update_customers(delta: float) -> void:
 	var max_queue := regs + 3 + level("customers")
 	spawn_timer -= delta
 	if spawn_timer <= 0.0 and customers.size() < max_queue:
-		spawn_timer = 1.4 / (1.0 + 0.3 * level("customers")) / regs
+		spawn_timer = 2.2 / (1.0 + 0.35 * level("customers")) / regs
 		_spawn_customer()
 	for i in customers.size():
 		customers[i].target_x = COUNTER_POS.x - i * QUEUE_SPACING
@@ -512,7 +522,7 @@ func _update_customers(delta: float) -> void:
 
 func _spawn_customer() -> void:
 	var order := {}
-	var count := randi_range(2, 4 + level("customers"))
+	var count := randi_range(1, 3 + level("customers") / 2)
 	var kinds := ["pizza"]
 	if level("pasta") > 0:
 		kinds.append("pasta")
@@ -627,9 +637,9 @@ func _build_world() -> void:
 	add_child(field)
 
 	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.9, 0.38, 0.28))
-	oven.base_time = 0.6
+	oven.base_time = 1.0
 	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.98, 0.78, 0.25))
-	pasta_machine.base_time = 0.8
+	pasta_machine.base_time = 1.4
 
 	counter = Counter.new()
 	counter.position = COUNTER_POS

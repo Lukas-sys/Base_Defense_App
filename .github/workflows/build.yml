@@ -50,6 +50,11 @@ jobs:
           fi
           grep -q "SMOKE_TEST_OK" smoke.log
 
+      - name: Balance-Test (Testspieler spielt 30 Minuten im Zeitraffer)
+        continue-on-error: true
+        run: |
+          timeout 600 godot --headless --path . -- --balance 2>&1 | tee balance.log | grep -E "BAL|SCRIPT ERROR" || true
+
       - name: Bildschirmfotos aufnehmen (nur zur Kontrolle)
         continue-on-error: true
         run: |
@@ -122,6 +127,7 @@ jobs:
         continue-on-error: true
         run: |
           grep -E "Selbsttest|SMOKE" smoke.log || true
+          grep -E "BAL|SCRIPT ERROR" balance.log || true
           for f in screenshots/*_klein.jpg; do
             echo "BILD_START $f"
             base64 -w0 "$f"
