@@ -12,7 +12,9 @@ const ROAD_Z := -13.2
 const ROAD_START := -24.0
 const ROAD_END := 24.0
 const COUNTER_POS := Vector3(0, 0, -10)
-const QUEUE_SPACING := 3.4
+const QUEUE_SPACING := 3.6
+const LANE_IN := -12.45  # Autos fahren auf dieser Spur zur Kasse
+const LANE_OUT := -14.0  # und auf dieser wieder weg
 const FIELD_POS := Vector3(0, 0, 1.6)
 const MAP_X := 8.5
 
@@ -20,20 +22,23 @@ const ITEM_NAMES := {"pizza": "Pizza", "pasta": "Nudeln"}
 const BASE_PRICE := {"pizza": 6.0, "pasta": 11.0}
 
 ## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
+## "titles" = eigener Name pro Stufe (z. B. erst Erntehelfer, später Erntemaschine).
 const UPGRADES := {
 	"capacity": {"title": "Größerer Korb", "max": 10, "base": 12.0, "growth": 1.5, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
 	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
-	"harvester": {"title": "Erntemaschine", "max": 3, "base": 90.0, "growth": 2.6, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
-	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 40.0, "growth": 1.6, "pos": Vector3(-6.8, 0, -1.8), "req": {"harvester": 1}},
-	"cashier": {"title": "Kassierer", "max": 1, "base": 120.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"harvester": 1}},
-	"pizza_belt": {"title": "Fließband Pizza", "max": 1, "base": 220.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"cashier": 1}},
-	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 100.0, "growth": 1.9, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
-	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 500.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"pizza_belt": 1}},
-	"pasta_belt": {"title": "Fließband Nudeln", "max": 1, "base": 700.0, "growth": 1.0, "pos": Vector3(7.0, 0, -7.6), "req": {"pasta": 1}},
-	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 250.0, "growth": 1.6, "pos": Vector3(7.1, 0, 6.5), "req": {"pasta": 1}},
+	"harvest": {"title": "Ernte", "titles": ["Erntehelfer", "Zweiter Erntehelfer", "Erntemaschine", "Zweite Erntemaschine"], "max": 4, "base": 60.0, "growth": 2.3, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
+	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 40.0, "growth": 1.6, "pos": Vector3(-6.8, 0, -1.8), "req": {"harvest": 1}},
+	"cashier": {"title": "Kassierer", "max": 1, "base": 100.0, "growth": 1.0, "pos": Vector3(6.8, 0, -0.4), "req": {"harvest": 1}},
+	"service": {"title": "Service", "titles": ["Kellner", "Zweiter Kellner", "Fließband Pizza"], "max": 3, "base": 140.0, "growth": 2.0, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
+	"register2": {"title": "Zweite Kasse (doppelt so viele Kunden)", "max": 1, "base": 350.0, "growth": 1.0, "pos": Vector3(-3.6, 0, -7.9), "req": {"service": 1}},
+	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 100.0, "growth": 1.9, "pos": Vector3(7.1, 0, 6.5), "req": {"cashier": 1}},
+	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 500.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"service": 2}},
+	"pasta_belt": {"title": "Fließband Nudeln", "max": 1, "base": 700.0, "growth": 1.0, "pos": Vector3(7.0, 0, -7.6), "req": {"pasta": 1, "service": 3}},
+	"register3": {"title": "Dritte Kasse (noch mehr Kunden)", "max": 1, "base": 1500.0, "growth": 1.0, "pos": Vector3(-7.0, 0, -7.9), "req": {"register2": 1, "pasta": 1}},
+	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 250.0, "growth": 1.6, "pos": Vector3(7.1, 0, 10.0), "req": {"pasta": 1}},
 	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
 	"mower": {"title": "Sense (breiter ernten)", "max": 3, "base": 200.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
-	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta_belt": 1, "harvester": 3, "prices": 3}},
+	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta_belt": 1, "harvest": 4, "register3": 1, "prices": 3}},
 }
 
 var money := 0.0
@@ -149,12 +154,29 @@ func price(kind: String) -> float:
 	return BASE_PRICE[kind] * (1.0 + 0.25 * level("prices")) * income_multiplier()
 
 
+func helper_capacity() -> int:
+	return 4 + level("capacity") / 2
+
+
 func harvester_capacity() -> int:
-	return 12 + 2 * level("harvester")
+	return 14 + level("capacity")
 
 
 func harvester_speed() -> float:
-	return 4.5 + 0.5 * level("harvester")
+	return 5.0
+
+
+## Wie viele Kassen es gibt (jede Kasse bedient ihr eigenes Auto).
+func register_count() -> int:
+	return 1 + level("register2") + level("register3")
+
+
+## Ist Kasse j besetzt? Entweder durch Personal oder weil der Spieler dort steht.
+func register_staffed(j: int) -> bool:
+	var staff := [level("cashier") > 0, level("register2") > 0, level("register3") > 0]
+	if j < staff.size() and staff[j]:
+		return true
+	return _in_zone(player.position, counter.cash_zone_of(j), Vector2(0.9, 0.7))
 
 
 func upgrade_cost(id: String) -> float:
@@ -166,6 +188,8 @@ func upgrade_cost(id: String) -> float:
 func upgrade_title(id: String) -> String:
 	var u: Dictionary = UPGRADES[id]
 	var t: String = u["title"]
+	if u.has("titles"):
+		return u["titles"][mini(level(id), u["titles"].size() - 1)]
 	if u["max"] > 1:
 		t += "  %d/%d" % [level(id) + 1, u["max"]]
 	return t
@@ -191,15 +215,15 @@ func buy_upgrade(id: String) -> void:
 	match id:
 		"field":
 			field.set_level(level("field"))
-			_build_fence()
-		"harvester":
-			_spawn_helper("harvester")
-		"cashier":
-			_spawn_helper("cashier")
-		"pizza_belt":
-			_build_belt("pizza")
+		"harvest", "cashier", "register2", "register3":
+			_sync_staff()
+		"service":
+			if level("service") >= 3:
+				_build_belt("pizza")
+			_sync_staff()
 		"pasta_belt":
 			_build_belt("pasta")
+			_sync_staff()
 		"pasta":
 			pasta_machine.visible = true
 			pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT
@@ -240,28 +264,71 @@ func _refresh_tiles() -> void:
 
 func _apply_levels() -> void:
 	field.set_level(level("field"))
-	_build_fence()
-	for i in level("harvester"):
-		_spawn_helper("harvester")
-	if level("pizza_belt") > 0:
+	if level("service") >= 3:
 		_build_belt("pizza")
 	if level("pasta_belt") > 0:
 		_build_belt("pasta")
-	for i in level("cashier"):
-		_spawn_helper("cashier")
 	var has_pasta := level("pasta") > 0
 	pasta_machine.visible = has_pasta
 	pasta_machine.process_mode = Node.PROCESS_MODE_INHERIT if has_pasta else Node.PROCESS_MODE_DISABLED
+	_sync_staff()
 
 
-func _spawn_helper(role: String) -> void:
+## Personal passend zu den Stufen aufstellen. Erntehelfer werden zur Erntemaschine,
+## Kellner werden überflüssig, sobald alle Maschinen ein Fließband haben.
+func _sync_staff() -> void:
+	counter.set_registers(register_count())
+	var want := {"farmer": 0, "harvester": 0, "waiter": 0}
+	var h_lvl := level("harvest")
+	if h_lvl >= 3:
+		want["harvester"] = h_lvl - 2
+	else:
+		want["farmer"] = h_lvl
+	var all_belts := level("service") >= 3 and (level("pasta") == 0 or level("pasta_belt") > 0)
+	if not all_belts:
+		want["waiter"] = mini(level("service"), 2)
+	var cashier_regs: Array[int] = []
+	if level("cashier") > 0:
+		cashier_regs.append(0)
+	if level("register2") > 0:
+		cashier_regs.append(1)
+	if level("register3") > 0:
+		cashier_regs.append(2)
+	# vorhandenes Personal behalten, überzähliges entfernen
+	var have := {"farmer": 0, "harvester": 0, "waiter": 0}
+	var have_regs: Array[int] = []
+	for h: Helper in helpers.duplicate():
+		var keep := false
+		if h.role == "cashier":
+			keep = cashier_regs.has(h.register_index) and not have_regs.has(h.register_index)
+			if keep:
+				have_regs.append(h.register_index)
+		else:
+			keep = have[h.role] < want[h.role]
+			if keep:
+				have[h.role] += 1
+		if not keep:
+			helpers.erase(h)
+			h.queue_free()
+	for role in want:
+		for k in want[role] - have[role]:
+			_spawn_helper(role, 0)
+	for r in cashier_regs:
+		if not have_regs.has(r):
+			_spawn_helper("cashier", r)
+
+
+func _spawn_helper(role: String, register_index: int) -> void:
 	var h := Helper.new()
 	h.setup_role(self, role)
+	h.register_index = register_index
 	match role:
-		"harvester":
+		"farmer", "harvester":
 			h.position = Vector3(randf_range(-3, 3), 0, FIELD_POS.z + 1.0)
+		"waiter":
+			h.position = Vector3(randf_range(-1.0, 1.0), 0, -6.5)
 		"cashier":
-			h.position = counter.cash_zone
+			h.position = counter.cash_zone_of(register_index)
 	add_child(h)
 	helpers.append(h)
 
@@ -274,23 +341,23 @@ func _in_zone(p: Vector3, center: Vector3, half: Vector2) -> bool:
 
 func _carrier_interact(c: Carrier, delta: float) -> void:
 	if c.can_harvest and not c.is_full():
-		var local := c.position - FIELD_POS
-		if absf(local.x) < 6.0 and local.z > -1.0 and local.z < field.size_z() + 1.0:
+		if field.covers(c.position):
 			field.harvest_near(c)
 	c.transfer_timer -= delta
 	if c.transfer_timer > 0.0:
 		return
-	var is_machine := c is Helper and (c as Helper).role == "harvester"
+	var is_farm := c is Helper and ((c as Helper).role == "harvester" or (c as Helper).role == "farmer")
+	var is_waiter := c is Helper and (c as Helper).role == "waiter"
 	for st in stations:
 		if not st.visible:
 			continue
-		if _in_zone(c.position, st.input_zone, Vector2(0.9, 0.8)) and c.has_item(st.input_kind) and st.wants_input():
+		if not is_waiter and _in_zone(c.position, st.input_zone, Vector2(0.9, 0.8)) and c.has_item(st.input_kind) and st.wants_input():
 			c.take_item(st.input_kind)
 			fly_item(st.input_kind, c.position + Vector3(0, 1.0, 0), st.input_pile.global_position + Vector3(0, 0.4, 0))
 			st.put_input()
 			c.transfer_timer = Carrier.TRANSFER_INTERVAL
 			return
-		if not is_machine and st.belt == null and _in_zone(c.position, st.output_zone, Vector2(0.9, 0.8)) and not c.is_full() and st.output_stock > 0:
+		if not is_farm and st.belt == null and _in_zone(c.position, st.output_zone, Vector2(0.9, 0.8)) and not c.is_full() and st.output_stock > 0:
 			st.take_output()
 			fly_item(st.output_kind, st.output_pile.global_position + Vector3(0, 0.3, 0), c.position + Vector3(0, 1.0, 0))
 			c.add_item(st.output_kind)
@@ -335,7 +402,7 @@ func station_needing_input() -> Station:
 func station_with_output() -> Station:
 	var best: Station = null
 	for st in stations:
-		if not st.visible or st.output_stock == 0:
+		if not st.visible or st.output_stock == 0 or st.belt != null:
 			continue
 		if not counter.has_room(st.output_kind):
 			continue
@@ -348,16 +415,16 @@ func station_with_output() -> Station:
 
 func _update_customers(delta: float) -> void:
 	# Autos kommen fast ununterbrochen: an der Theke soll immer jemand warten.
-	var max_queue := 4 + level("customers")
+	# Jede Kasse bringt ihre eigenen Kunden: zwei Kassen = doppelt so viele Autos.
+	var regs := register_count()
+	var max_queue := regs + 3 + level("customers")
 	spawn_timer -= delta
 	if spawn_timer <= 0.0 and customers.size() < max_queue:
-		spawn_timer = 1.4 / (1.0 + 0.3 * level("customers"))
+		spawn_timer = 1.4 / (1.0 + 0.3 * level("customers")) / regs
 		_spawn_customer()
 	for i in customers.size():
 		customers[i].target_x = COUNTER_POS.x - i * QUEUE_SPACING
-	var staffed := level("cashier") > 0 or _in_zone(player.position, counter.cash_zone, Vector2(0.9, 0.7))
-	var front: Customer = customers[0] if customers.size() > 0 else null
-	counter.serve(front, staffed, delta)
+	counter.serve(customers.duplicate(), delta)
 
 
 func _spawn_customer() -> void:
@@ -371,7 +438,7 @@ func _spawn_customer() -> void:
 		order[k] = order.get(k, 0) + 1
 	var c := Customer.new()
 	c.setup(self, order)
-	c.position = Vector3(ROAD_START, 0, ROAD_Z)
+	c.position = Vector3(ROAD_START, 0, LANE_IN)
 	c.target_x = ROAD_START
 	add_child(c)
 	customers.append(c)
@@ -488,11 +555,9 @@ func _build_world() -> void:
 
 ## Fertige Modelle als Deko: Küchengeräte, Kisten, Tisch, Straßenlaternen.
 func _add_decor() -> void:
-	Models.add(self, "restaurant-bits/fridge_A", 0.85, Vector3(-8.6, 0.03, -10.6))
-	Models.add(self, "restaurant-bits/kitchencounter_straight_A_decorated", 0.85, Vector3(-6.9, 0.03, -10.7))
-	Models.add(self, "restaurant-bits/crate_tomatoes", 0.5, Vector3(-8.7, 0.03, -7.4))
-	Models.add(self, "restaurant-bits/crate_cheese", 0.5, Vector3(-8.7, 0.03, -6.3))
-	Models.add(self, "restaurant-bits/crate_onions", 0.5, Vector3(-7.7, 0.03, -7.4))
+	Models.add(self, "restaurant-bits/crate_tomatoes", 0.5, Vector3(-8.7, 0.03, -5.6))
+	Models.add(self, "restaurant-bits/crate_cheese", 0.5, Vector3(-8.7, 0.03, -4.6))
+	Models.add(self, "restaurant-bits/crate_onions", 0.5, Vector3(-8.7, 0.03, -3.6))
 	Models.add(self, "restaurant-bits/table_round_A_decorated", 0.75, Vector3(7.9, 0.03, -4.6))
 	Models.add(self, "restaurant-bits/chair_A", 0.75, Vector3(7.9, 0.03, -3.3), 180.0)
 	Models.add(self, "restaurant-bits/chair_A", 0.75, Vector3(6.6, 0.03, -4.6), 90.0)
@@ -630,28 +695,6 @@ func _make_station(id: String, out_kind: String, pos: Vector3, color: Color) -> 
 	return st
 
 
-func _build_fence() -> void:
-	if fence != null:
-		fence.queue_free()
-	fence = Node3D.new()
-	add_child(fence)
-	var c := Color(0.92, 0.85, 0.65)
-	var z0 := FIELD_POS.z - 0.6
-	var z1 := FIELD_POS.z + field.size_z() + 0.2
-	var x := Field.COLUMNS * Field.SPACING * 0.5 + 0.5
-	for side in [-1.0, 1.0]:
-		var z := z0
-		while z <= z1:
-			fence.add_child(Util.box(Vector3(0.18, 0.6, 0.18), c, Vector3(side * x, 0.3, z)))
-			z += 1.0
-		fence.add_child(Util.box(Vector3(0.08, 0.1, z1 - z0), c, Vector3(side * x, 0.45, (z0 + z1) * 0.5)))
-	var xx := -x
-	while xx <= x:
-		fence.add_child(Util.box(Vector3(0.18, 0.6, 0.18), c, Vector3(xx, 0.3, z1)))
-		xx += 1.0
-	fence.add_child(Util.box(Vector3(x * 2.0, 0.1, 0.08), c, Vector3(0, 0.45, z1)))
-
-
 func popup_text(where: Vector3, text: String, color: Color) -> void:
 	var label := Util.billboard_label(text, 72, color)
 	label.position = where + Vector3(0, 2.4, 0)
@@ -693,13 +736,17 @@ func _load_game() -> void:
 	levels = data.get("levels", {})
 	# Alte Spielstände: Erntehelfer -> Erntemaschine, Kellner -> Fließband
 	if levels.has("farmer"):
-		levels["harvester"] = mini(3, int(levels["farmer"]))
+		levels["harvest"] = mini(2, int(levels["farmer"]))
 		levels.erase("farmer")
+	if levels.has("harvester"):
+		levels["harvest"] = mini(4, 2 + int(levels["harvester"]))
+		levels.erase("harvester")
 	if levels.has("waiter"):
-		levels["pizza_belt"] = 1
-		if int(levels.get("pasta", 0)) > 0 and int(levels["waiter"]) > 1:
-			levels["pasta_belt"] = 1
+		levels["service"] = mini(2, int(levels["waiter"]))
 		levels.erase("waiter")
+	if levels.has("pizza_belt"):
+		levels["service"] = 3
+		levels.erase("pizza_belt")
 	tile_paid = data.get("tile_paid", {})
 	total_sales = int(data.get("sales", 0))
 
@@ -751,7 +798,7 @@ func _screenshot_step(delta: float) -> void:
 		_save_shot("1_start")
 		money = 1000000.0
 		for _r in 3:
-			for id in ["capacity", "field", "harvester", "cashier", "pizza_belt", "pasta", "pasta_belt", "customers"]:
+			for id in ["capacity", "field", "harvest", "cashier", "service", "register2", "pasta", "customers"]:
 				if _is_unlocked(id):
 					buy_upgrade(id)
 		money = 870.0

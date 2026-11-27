@@ -74,8 +74,9 @@ func _process(delta: float) -> void:
 				queue_free()
 
 
-func is_at_counter() -> bool:
-	return state != State.LEAVING and absf(position.x - Game.COUNTER_POS.x) < 0.1 and target_x == Game.COUNTER_POS.x
+## Steht das Auto (noch wartend) genau an dieser Stelle?
+func is_at(x: float) -> bool:
+	return state != State.LEAVING and absf(position.x - x) < 0.1 and absf(target_x - x) < 0.01
 
 
 func wants(kind: String) -> bool:
@@ -97,6 +98,9 @@ func receive(kind: String, price: float) -> void:
 
 func leave() -> void:
 	state = State.LEAVING
+	# auf die andere Spur wechseln, damit die wartenden Autos nicht im Weg sind
+	var t := create_tween()
+	t.tween_property(self, "position:z", Game.LANE_OUT, 0.35).set_trans(Tween.TRANS_SINE)
 	bubble.text = "Danke!"
 	bubble.modulate = Color(0.2, 0.6, 0.25)
 	bubble_bg.scale = Vector3(1.3, 1.0, 1)

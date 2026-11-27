@@ -1,16 +1,19 @@
 class_name Field
 extends Node3D
-## Das Weizenfeld. Wer hindurchläuft, erntet automatisch (wenn noch Platz im Korb ist).
-## Abgeerntete Halme wachsen nach einiger Zeit wieder nach.
+## Ein Feld oder Beet (Weizen, Tomaten, Karotten). Wer hindurchläuft, erntet automatisch
+## (wenn noch Platz im Korb ist). Abgeerntete Pflanzen wachsen nach einiger Zeit wieder nach.
 
 const SPACING := 0.62
-const COLUMNS := 17
-const BASE_ROWS := 5
-const ROWS_PER_LEVEL := 3
 const REGROW_TIME := 5.5
 
 var game: Game
-var rows := BASE_ROWS
+var kind := "wheat"
+var columns := 17
+var base_rows := 5
+var rows_per_level := 3
+var plant_scale := 1.5
+var rows := 5
+var fence: Node3D
 var grown: PackedByteArray = PackedByteArray()
 var regrow: PackedFloat32Array = PackedFloat32Array()
 var positions: PackedVector3Array = PackedVector3Array()
@@ -25,7 +28,7 @@ func _ready() -> void:
 	var mmi := MultiMeshInstance3D.new()
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.mesh = Util.wheat_mesh()
+	multimesh.mesh = Util.plant_mesh(kind)
 	mmi.multimesh = multimesh
 	mmi.material_override = Util.vertex_color_mat()
 	add_child(mmi)
@@ -38,31 +41,73 @@ func _ready() -> void:
 	set_level(0)
 
 
+## Vor add_child aufrufen, um ein anderes Beet zu bauen.
+func configure(crop: String, cols: int, start_rows: int, per_level: int) -> void:
+	kind = crop
+	columns = cols
+	base_rows = start_rows
+	rows_per_level = per_level
+	plant_scale = 1.5 if crop == "wheat" else 1.25
+
+
 ## Größe des Feldes festlegen (mehr Reihen pro Stufe).
 func set_level(level: int) -> void:
-	rows = BASE_ROWS + ROWS_PER_LEVEL * level
-	var total := rows * COLUMNS
+	rows = base_rows + rows_per_level * level
+	var total := rows * columns
 	grown.resize(total)
 	regrow.resize(total)
 	positions.resize(total)
 	spins.resize(total)
 	multimesh.instance_count = total
 	for r in rows:
-		for c in COLUMNS:
-			var i := r * COLUMNS + c
+		for c in columns:
+			var i := r * columns + c
 			var jitter := Vector3(randf_range(-0.15, 0.15), 0, randf_range(-0.15, 0.15))
-			positions[i] = Vector3((c - (COLUMNS - 1) * 0.5) * SPACING, 0, r * SPACING) + jitter
+			positions[i] = Vector3((c - (columns - 1) * 0.5) * SPACING, 0, r * SPACING) + jitter
 			spins[i] = randf() * TAU
 			grown[i] = 1
 			regrow[i] = 0.0
 			_set_plant(i, 1.0)
 	grown_count = total
-	var w := COLUMNS * SPACING + 0.5
+	var w := columns * SPACING + 0.5
 	var d := rows * SPACING + 0.5
 	soil.mesh = Util.rounded_box_mesh(Vector3(w, 0.06, d), 0.02)
 	soil.position = Vector3(0, 0.0, (rows - 1) * SPACING * 0.5)
 	border.mesh = Util.rounded_box_mesh(Vector3(w + 0.4, 0.04, d + 0.4), 0.02)
 	border.position = soil.position
+	_build_fence()
+
+
+func width() -> float:
+	return columns * SPACING
+
+
+## Liegt ein Punkt (Weltkoordinaten) im Feld oder knapp daneben?
+func covers(p: Vector3) -> bool:
+	var local := p - position
+	return absf(local.x) < width() * 0.5 + 0.6 and local.z > -1.0 and local.z < size_z() + 1.0
+
+
+func _build_fence() -> void:
+	if fence != null:
+		fence.queue_free()
+	fence = Node3D.new()
+	add_child(fence)
+	var c := Color(0.92, 0.85, 0.65)
+	var z0 := -0.6
+	var z1 := size_z() + 0.2
+	var x := width() * 0.5 + 0.5
+	for side in [-1.0, 1.0]:
+		var z := z0
+		while z <= z1:
+			fence.add_child(Util.box(Vector3(0.18, 0.6, 0.18), c, Vector3(side * x, 0.3, z)))
+			z += 1.0
+		fence.add_child(Util.box(Vector3(0.08, 0.1, z1 - z0), c, Vector3(side * x, 0.45, (z0 + z1) * 0.5)))
+	var xx := -x
+	while xx <= x:
+		fence.add_child(Util.box(Vector3(0.18, 0.6, 0.18), c, Vector3(xx, 0.3, z1)))
+		xx += 1.0
+	fence.add_child(Util.box(Vector3(x * 2.0, 0.1, 0.08), c, Vector3(0, 0.45, z1)))
 
 
 func size_z() -> float:
@@ -71,7 +116,7 @@ func size_z() -> float:
 
 func _set_plant(i: int, height: float) -> void:
 	var h := maxf(height, 0.05)
-	var basis := Basis(Vector3.UP, spins[i]).scaled(Vector3(1.5, h * 1.1, 1.5))
+	var basis := Basis(Vector3.UP, spins[i]).scaled(Vector3(plant_scale, h * plant_scale * 0.75, plant_scale))
 	multimesh.set_instance_transform(i, Transform3D(basis, positions[i] + Vector3(0, 0.02, 0)))
 
 
@@ -93,7 +138,7 @@ func harvest_near(carrier: Carrier) -> void:
 			carrier.harvest_bits += 1
 			if carrier.harvest_bits >= 1:
 				carrier.harvest_bits = 0
-				carrier.add_item("wheat")
+				carrier.add_item(kind)
 			if game != null:
 				game.on_harvest(positions[i] + position)
 

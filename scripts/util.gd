@@ -1,7 +1,7 @@
 class_name Util
 extends RefCounted
 ## Helfer für die Grafik: abgerundete Formen, Materialien, Texturen, Schrift.
-## Alles wird im Code erzeugt, es gibt keine externen 3D-Modelle.
+## Figuren, Pflanzen und Gegenstände werden im Code erzeugt (Maschinen und Deko: siehe Models).
 
 static var _materials := {}
 static var _meshes := {}
@@ -259,6 +259,63 @@ static func wheat_mesh() -> Mesh:
 	return mesh
 
 
+## Pflanze für ein Beet: "wheat", "tomato" oder "carrot".
+static func plant_mesh(kind: String) -> Mesh:
+	if kind == "wheat":
+		return wheat_mesh()
+	var key := "plant_" + kind
+	if _meshes.has(key):
+		return _meshes[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var leaf := SphereMesh.new()
+	leaf.radius = 0.16
+	leaf.height = 0.3
+	leaf.radial_segments = 6
+	leaf.rings = 3
+	var green := Color(0.3, 0.62, 0.26)
+	var light := Color(0.45, 0.78, 0.32)
+	if kind == "tomato":
+		var stem := CylinderMesh.new()
+		stem.top_radius = 0.025
+		stem.bottom_radius = 0.035
+		stem.height = 0.55
+		stem.radial_segments = 5
+		stem.rings = 1
+		_append(st, stem, Transform3D(Basis(), Vector3(0, 0.27, 0)), green, green, 1.0)
+		for p in [Vector3(0.1, 0.35, 0.05), Vector3(-0.1, 0.45, -0.04), Vector3(0.02, 0.58, 0.08), Vector3(-0.05, 0.28, 0.1)]:
+			_append(st, leaf, Transform3D(Basis(), p), green, light, 0.8)
+		var fruit := SphereMesh.new()
+		fruit.radius = 0.075
+		fruit.height = 0.15
+		fruit.radial_segments = 8
+		fruit.rings = 4
+		var red := Color(0.92, 0.22, 0.18)
+		for p in [Vector3(0.16, 0.3, 0.12), Vector3(-0.15, 0.4, 0.1), Vector3(0.08, 0.5, -0.14), Vector3(-0.04, 0.22, -0.16)]:
+			_append(st, fruit, Transform3D(Basis(), p), red, red.lightened(0.15), 1.0)
+	else:
+		var root := CylinderMesh.new()
+		root.top_radius = 0.075
+		root.bottom_radius = 0.0
+		root.height = 0.3
+		root.radial_segments = 7
+		root.rings = 1
+		var orange := Color(0.98, 0.55, 0.15)
+		_append(st, root, Transform3D(Basis(), Vector3(0, 0.02, 0)), orange, orange.lightened(0.1), 1.0)
+		var blade := CylinderMesh.new()
+		blade.top_radius = 0.035
+		blade.bottom_radius = 0.015
+		blade.height = 0.4
+		blade.radial_segments = 4
+		blade.rings = 1
+		for k in 5:
+			var b := Basis(Vector3.UP, k * TAU / 5.0) * Basis(Vector3.RIGHT, 0.35)
+			_append(st, blade, Transform3D(b, Vector3(0, 0.17, 0)) * Transform3D(Basis(), Vector3(0, 0.2, 0)), green, light, 0.7)
+	var mesh := st.commit()
+	_meshes[key] = mesh
+	return mesh
+
+
 static func _append(st: SurfaceTool, src: PrimitiveMesh, xf: Transform3D, bottom: Color, top: Color, total_h: float) -> void:
 	var arrays := src.get_mesh_arrays()
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -358,6 +415,18 @@ static func item(kind: String) -> Node3D:
 			root.add_child(cylinder(0.24, 0.24, 0.04, Color(1.0, 0.84, 0.38), Vector3(0, 0.15, 0)))
 			root.add_child(sphere(0.08, Color(0.86, 0.25, 0.18), Vector3(0, 0.17, 0)))
 			root.add_child(sphere(0.03, Color(0.3, 0.7, 0.3), Vector3(0.04, 0.24, 0.02)))
+		"tomato", "carrot":
+			# Holzkiste mit Gemüse
+			root.add_child(box(Vector3(0.56, 0.18, 0.42), Color(0.82, 0.6, 0.36), Vector3(0, 0.09, 0), 0.25))
+			root.add_child(box(Vector3(0.58, 0.04, 0.44), Color(0.68, 0.46, 0.26), Vector3(0, 0.15, 0), 0.25))
+			if kind == "tomato":
+				for p in [Vector3(-0.14, 0.2, -0.07), Vector3(0.0, 0.21, 0.07), Vector3(0.14, 0.2, -0.05)]:
+					root.add_child(sphere(0.085, Color(0.92, 0.22, 0.18), p))
+			else:
+				for i in 3:
+					var c := capsule(0.05, 0.3, Color(0.98, 0.55, 0.15), Vector3(-0.12 + i * 0.12, 0.2, 0))
+					c.rotation_degrees = Vector3(90, 0, 0)
+					root.add_child(c)
 		"money":
 			root.add_child(box(Vector3(0.52, 0.1, 0.3), Color(0.4, 0.82, 0.32), Vector3(0, 0.05, 0), 0.3))
 			root.add_child(box(Vector3(0.11, 0.11, 0.31), Color(0.98, 0.85, 0.35), Vector3(0, 0.05, 0), 0.2))
@@ -375,6 +444,8 @@ static func item_height(kind: String) -> float:
 			return 0.19
 		"money":
 			return 0.11
+		"tomato", "carrot":
+			return 0.27
 	return 0.2
 
 
