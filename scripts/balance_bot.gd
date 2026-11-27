@@ -72,7 +72,14 @@ func _choose() -> Vector3:
 	if tile != null and game.money + _pile_money() >= tile.cost - tile.paid and _pile_money() > 0.0:
 		mode = "geld"
 		return _nearest_pile()
-	# 3. Fertige Ware abliefern
+	# 3. Kasse besetzen, wenn kein Kassierer da ist, ein Auto wartet und genug Ware da ist
+	if game.level("cashier") == 0 and game.customers.size() > 0 and _counter_can_serve() and (_counter_total() >= 6 or not game.counter.has_room("pizza")):
+		mode = "kasse"
+		return game.counter.cash_zone_of(0)
+	if game.level("veg") > 0 and game.level("veg_cashier") == 0 and game.veg_shop.shoppers.size() > 0 and _veg_total() >= 6:
+		mode = "kasse_gemuese"
+		return game.veg_shop.cash_zone
+	# 4. Fertige Ware abliefern
 	for kind in ["pizza", "pasta"]:
 		if p.has_item(kind):
 			mode = "theke"
@@ -100,7 +107,7 @@ func _choose() -> Vector3:
 	if game.level("cashier") == 0 and game.customers.size() > 0 and _counter_can_serve():
 		mode = "kasse"
 		return game.counter.cash_zone_of(0)
-	if game.level("veg") > 0 and game.level("veg_cashier") == 0 and game.veg_shop.shoppers.size() > 0 and (game.veg_shop.stock["tomato"] + game.veg_shop.stock["carrot"]) > 0:
+	if game.level("veg") > 0 and game.level("veg_cashier") == 0 and game.veg_shop.shoppers.size() > 0 and _veg_total() > 0:
 		mode = "kasse_gemuese"
 		return game.veg_shop.cash_zone
 	# 7. Geld holen, wenn viel herumliegt
@@ -120,6 +127,14 @@ func _choose() -> Vector3:
 			return f.position + Vector3(0, 0, 1.0)
 	mode = "leerlauf"
 	return game.counter.cash_zone_of(0)
+
+
+func _counter_total() -> int:
+	return int(game.counter.stock["pizza"]) + int(game.counter.stock["pasta"])
+
+
+func _veg_total() -> int:
+	return int(game.veg_shop.stock["tomato"]) + int(game.veg_shop.stock["carrot"])
 
 
 func _counter_can_serve() -> bool:
