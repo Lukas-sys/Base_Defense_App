@@ -158,6 +158,11 @@ func clamp_to_map(p: Vector3) -> Vector3:
 	if level("veg") > 0:
 		max_x = VEG_MAP_X
 		max_z = maxf(max_z, 10.0)
+	# Jedes Bezahlfeld muss erreichbar sein, auch wenn das Feld noch klein ist.
+	for id in tiles:
+		var tp: Vector3 = tiles[id].position
+		max_z = maxf(max_z, tp.z + 1.3)
+		max_x = maxf(max_x, tp.x + 1.3)
 	return Vector3(clampf(p.x, -MAP_X, max_x), p.y, clampf(p.z, -11.0, max_z))
 
 
@@ -678,9 +683,6 @@ func _add_decor() -> void:
 	Models.add(self, "restaurant-bits/crate_tomatoes", 0.5, Vector3(-8.7, 0.03, -5.6))
 	Models.add(self, "restaurant-bits/crate_cheese", 0.5, Vector3(-8.7, 0.03, -4.6))
 	Models.add(self, "restaurant-bits/crate_onions", 0.5, Vector3(-8.7, 0.03, -3.6))
-	Models.add(self, "restaurant-bits/table_round_A_decorated", 0.75, Vector3(7.9, 0.03, -4.6))
-	Models.add(self, "restaurant-bits/chair_A", 0.75, Vector3(7.9, 0.03, -3.3), 180.0)
-	Models.add(self, "restaurant-bits/chair_A", 0.75, Vector3(6.6, 0.03, -4.6), 90.0)
 	Models.add(self, "restaurant-bits/shelf_papertowel_decorated", 0.8, Vector3(8.4, 0.75, -11.2))
 	for x in [-10.5, 10.5]:
 		Models.add(self, "city-builder-bits/streetlight", 3.4, Vector3(x, 0, ROAD_Z + 2.3), 0.0 if x < 0 else 180.0)
