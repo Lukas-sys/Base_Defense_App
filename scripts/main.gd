@@ -27,28 +27,28 @@ const VEG_MAP_X := 26.5
 ## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
 ## "titles" = eigener Name pro Stufe (z. B. erst Erntehelfer, später Erntemaschine).
 const UPGRADES := {
-	"capacity": {"title": "Größerer Korb", "max": 10, "base": 12.0, "growth": 1.5, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
-	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
-	"harvest": {"title": "Ernte", "titles": ["Erntehelfer", "Zweiter Erntehelfer", "Erntemaschine", "Zweite Erntemaschine"], "max": 4, "base": 60.0, "growth": 2.3, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
-	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 40.0, "growth": 1.6, "pos": Vector3(-6.8, 0, -1.8), "req": {"harvest": 1}},
+	"capacity": {"title": "Größerer Korb", "max": 10, "base": 12.0, "growth": 1.7, "pos": Vector3(-3.4, 0, -0.2), "req": {}},
+	"field": {"title": "Feld vergrößern", "max": 3, "base": 60.0, "growth": 2.4, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
+	"harvest": {"title": "Ernte", "titles": ["Erntehelfer", "Zweiter Erntehelfer", "Erntemaschine", "Zweite Erntemaschine"], "max": 4, "base": 60.0, "growth": 2.6, "pos": Vector3(3.4, 0, -0.2), "req": {"field": 1}},
+	"oven_speed": {"title": "Ofen schneller", "max": 8, "base": 40.0, "growth": 1.85, "pos": Vector3(-6.8, 0, -1.8), "req": {"harvest": 1}},
 	"cashier": {"title": "Kassierer", "max": 1, "base": 100.0, "growth": 1.0, "pos": Vector3(6.8, 0, -0.4), "req": {"harvest": 1}},
-	"service": {"title": "Service", "titles": ["Kellner", "Zweiter Kellner", "Fließband Pizza"], "max": 3, "base": 140.0, "growth": 2.0, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
+	"service": {"title": "Service", "titles": ["Kellner", "Zweiter Kellner", "Fließband Pizza"], "max": 3, "base": 140.0, "growth": 2.4, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
 	"register2": {"title": "Zweite Kasse (doppelt so viele Kunden)", "max": 1, "base": 350.0, "growth": 1.0, "pos": Vector3(-3.6, 0, -7.9), "req": {"service": 1}},
-	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 100.0, "growth": 1.9, "pos": Vector3(7.1, 0, 6.5), "req": {"cashier": 1}},
+	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 100.0, "growth": 2.2, "pos": Vector3(7.1, 0, 6.5), "req": {"cashier": 1}},
 	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 500.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"service": 2}},
 	"pasta_belt": {"title": "Fließband Nudeln", "max": 1, "base": 700.0, "growth": 1.0, "pos": Vector3(7.0, 0, -7.6), "req": {"pasta": 1, "service": 3}},
 	"register3": {"title": "Dritte Kasse (noch mehr Kunden)", "max": 1, "base": 1500.0, "growth": 1.0, "pos": Vector3(-7.0, 0, -7.9), "req": {"register2": 1, "pasta": 1}},
-	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 250.0, "growth": 1.6, "pos": Vector3(7.1, 0, 10.0), "req": {"pasta": 1}},
-	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
+	"pasta_speed": {"title": "Nudeln schneller", "max": 8, "base": 250.0, "growth": 1.85, "pos": Vector3(7.1, 0, 10.0), "req": {"pasta": 1}},
+	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 8, "base": 450.0, "growth": 2.3, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
 	"mower": {"title": "Sense (breiter ernten)", "max": 3, "base": 200.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
 	# --- Gemüsegarten und Gemüseladen (Gebiet rechts) ---
 	"veg": {"title": "Gemüseladen eröffnen", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(7.4, 0, -5.2), "req": {"service": 2}},
 	"carrots": {"title": "Karottenbeet", "max": 1, "base": 400.0, "growth": 1.0, "pos": Vector3(21.4, 0, -2.4), "req": {"veg": 1}},
 	"veg_cashier": {"title": "Verkäuferin", "max": 1, "base": 300.0, "growth": 1.0, "pos": Vector3(13.4, 0, -6.0), "req": {"veg": 1}},
-	"veg_harvest": {"title": "Gartenhilfe", "titles": ["Gärtner", "Zweiter Gärtner", "Gemüse-Erntemaschine"], "max": 3, "base": 350.0, "growth": 2.2, "pos": Vector3(18.0, 0, 5.0), "req": {"veg": 1}},
+	"veg_harvest": {"title": "Gartenhilfe", "titles": ["Gärtner", "Zweiter Gärtner", "Gemüse-Erntemaschine"], "max": 3, "base": 350.0, "growth": 2.5, "pos": Vector3(18.0, 0, 5.0), "req": {"veg": 1}},
 	"veg_beds": {"title": "Beete vergrößern", "max": 3, "base": 500.0, "growth": 2.4, "pos": Vector3(14.6, 0, 5.0), "req": {"carrots": 1}},
-	"veg_customers": {"title": "Marktschild: mehr Kundschaft", "max": 5, "base": 400.0, "growth": 1.9, "pos": Vector3(21.4, 0, 5.0), "req": {"veg_cashier": 1}},
-	"veg_prices": {"title": "Bio-Qualität (+25% Preis)", "max": 10, "base": 700.0, "growth": 1.9, "pos": Vector3(18.0, 0, 8.6), "req": {"carrots": 1}},
+	"veg_customers": {"title": "Marktschild: mehr Kundschaft", "max": 5, "base": 400.0, "growth": 2.2, "pos": Vector3(21.4, 0, 5.0), "req": {"veg_cashier": 1}},
+	"veg_prices": {"title": "Bio-Qualität (+25% Preis)", "max": 8, "base": 700.0, "growth": 2.3, "pos": Vector3(18.0, 0, 8.6), "req": {"carrots": 1}},
 	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta_belt": 1, "harvest": 4, "register3": 1, "prices": 3, "veg_harvest": 3, "veg_beds": 2}},
 }
 
@@ -465,9 +465,9 @@ func _carrier_interact(c: Carrier, delta: float) -> void:
 
 func _player_only(delta: float) -> void:
 	var pile := money_pile
-	if level("veg") > 0 and _in_zone(player.position, veg_shop.money_pile.position, Vector2(1.1, 1.0)):
+	if level("veg") > 0 and _in_zone(player.position, veg_shop.money_pile.position, Vector2(1.7, 1.5)):
 		pile = veg_shop.money_pile
-	if pile.amount > 0.0 and _in_zone(player.position, pile.position, Vector2(1.1, 1.0)):
+	if pile.amount > 0.0 and _in_zone(player.position, pile.position, Vector2(1.7, 1.5)):
 		var got := pile.collect()
 		money += got
 		popup_text(player.position, "+$" + Util.money_text(got), Color(0.6, 1.0, 0.5))
@@ -639,7 +639,7 @@ func _build_world() -> void:
 	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.9, 0.38, 0.28))
 	oven.base_time = 1.0
 	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.98, 0.78, 0.25))
-	pasta_machine.base_time = 1.4
+	pasta_machine.base_time = 1.0
 
 	counter = Counter.new()
 	counter.position = COUNTER_POS
@@ -649,7 +649,7 @@ func _build_world() -> void:
 	_build_veg_area()
 
 	money_pile = MoneyPile.new()
-	money_pile.position = Vector3(3.9, 0, -7.4)
+	money_pile.position = Vector3(0.75, 0, -7.0)  # direkt neben der Ablage: beim Abliefern sammelt man mit
 	add_child(money_pile)
 
 

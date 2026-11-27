@@ -48,7 +48,7 @@ func configure(crop: String, cols: int, start_rows: int, per_level: int) -> void
 	base_rows = start_rows
 	rows_per_level = per_level
 	plant_scale = 1.5 if crop == "wheat" else 1.25
-	regrow_time = 16.0 if crop == "wheat" else 20.0
+	regrow_time = 40.0 if crop == "wheat" else 45.0  # langsam genug, dass größere Felder sich lohnen
 
 
 ## Größe des Feldes festlegen (mehr Reihen pro Stufe).
