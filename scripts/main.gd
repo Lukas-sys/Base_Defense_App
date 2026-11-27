@@ -678,4 +678,7 @@ func _save_shot(shot_name: String) -> void:
 	var img := get_viewport().get_texture().get_image()
 	var path := screenshot_dir.path_join(shot_name + ".png")
 	img.save_png(path)
+	var small := img.duplicate() as Image
+	small.resize(img.get_width() / 2, img.get_height() / 2)
+	small.save_jpg(screenshot_dir.path_join(shot_name + "_klein.jpg"), 0.7)
 	print("Bildschirmfoto gespeichert: ", path)

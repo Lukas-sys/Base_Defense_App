@@ -94,3 +94,15 @@ jobs:
         with:
           name: Hofkueche-Windows
           path: build/windows/Hofkueche.exe
+
+      - name: Zusammenfassung
+        if: always()
+        continue-on-error: true
+        run: |
+          grep -E "Selbsttest|SMOKE" smoke.log || true
+          for f in screenshots/*_klein.jpg; do
+            echo "BILD_START $f"
+            base64 -w0 "$f"
+            echo ""
+            echo "BILD_ENDE"
+          done
