@@ -23,7 +23,10 @@ jobs:
           mkdir -p /tmp/kenney assets/kenney
           for slug in food-kit car-kit nature-kit mini-characters furniture-kit survival-kit; do
             echo "=== $slug"
-            url=$(curl -sL -A "Mozilla/5.0" "https://kenney.nl/assets/$slug" | grep -oE 'https://kenney\.nl/media/pages/assets/[^"]+\.zip' | head -1 || true)
+            curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" -o "/tmp/kenney/$slug.html" -w "HTTP %{http_code}, %{size_download} Bytes\n" "https://kenney.nl/assets/$slug" || true
+            grep -oE '[^"'"'"' ]*\.zip[^"'"'"' ]*' "/tmp/kenney/$slug.html" | sort -u | head -5 || true
+            url=$(grep -oE '(https://kenney\.nl)?/media/pages/assets/[^"'"'"' ]+\.zip' "/tmp/kenney/$slug.html" | head -1 || true)
+            case "$url" in /*) url="https://kenney.nl$url";; esac
             if [ -z "$url" ]; then echo "keine ZIP gefunden für $slug"; continue; fi
             echo "$url"
             curl -sL -A "Mozilla/5.0" -o "/tmp/kenney/$slug.zip" "$url"
