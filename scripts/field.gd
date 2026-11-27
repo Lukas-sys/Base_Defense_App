@@ -3,9 +3,9 @@ extends Node3D
 ## Das Weizenfeld. Wer hindurchläuft, erntet automatisch (wenn noch Platz im Korb ist).
 ## Abgeerntete Halme wachsen nach einiger Zeit wieder nach.
 
-const SPACING := 0.8
-const COLUMNS := 13
-const BASE_ROWS := 4
+const SPACING := 0.7
+const COLUMNS := 15
+const BASE_ROWS := 5
 const ROWS_PER_LEVEL := 3
 const REGROW_TIME := 9.0
 
@@ -24,13 +24,13 @@ func _ready() -> void:
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	var stalk := CylinderMesh.new()
 	stalk.top_radius = 0.0
-	stalk.bottom_radius = 0.16
-	stalk.height = 1.0
+	stalk.bottom_radius = 0.26
+	stalk.height = 1.25
 	stalk.radial_segments = 5
 	stalk.rings = 1
 	multimesh.mesh = stalk
 	mmi.multimesh = multimesh
-	mmi.material_override = Util.mat(Color(0.95, 0.8, 0.3))
+	mmi.material_override = Util.mat(Color(0.98, 0.82, 0.25))
 	add_child(mmi)
 	soil = MeshInstance3D.new()
 	soil.material_override = Util.mat(Color(0.52, 0.3, 0.22))
@@ -67,8 +67,8 @@ func size_z() -> float:
 
 func _set_plant(i: int, height: float) -> void:
 	var h := maxf(height, 0.05)
-	var basis := Basis().scaled(Vector3(1.0, h * 0.9, 1.0))
-	multimesh.set_instance_transform(i, Transform3D(basis, positions[i] + Vector3(0, h * 0.45, 0)))
+	var basis := Basis().scaled(Vector3(1.0, h, 1.0))
+	multimesh.set_instance_transform(i, Transform3D(basis, positions[i] + Vector3(0, h * 0.62, 0)))
 
 
 ## Erntet alle reifen Halme im Umkreis eines Trägers, solange er Platz hat.

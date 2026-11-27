@@ -14,25 +14,25 @@ const ROAD_END := 24.0
 const COUNTER_POS := Vector3(0, 0, -10)
 const QUEUE_SPACING := 3.4
 const FIELD_POS := Vector3(0, 0, 1.6)
-const MAP_X := 10.5
+const MAP_X := 8.5
 
 const ITEM_NAMES := {"pizza": "Pizza", "pasta": "Nudeln"}
 const BASE_PRICE := {"pizza": 5.0, "pasta": 9.0}
 
 ## Alle Upgrades. "req" = welche Upgrades (mit Mindeststufe) vorher gekauft sein müssen.
 const UPGRADES := {
-	"capacity": {"title": "Größerer Korb", "max": 10, "base": 15.0, "growth": 1.55, "pos": Vector3(-8.3, 0, -0.4), "req": {}},
-	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.6), "req": {"capacity": 1}},
-	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(-8.3, 0, 3.4), "req": {"field": 1}},
-	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 50.0, "growth": 1.7, "pos": Vector3(-8.3, 0, -8.6), "req": {"farmer": 1}},
-	"cashier": {"title": "Kassierer", "max": 1, "base": 160.0, "growth": 1.0, "pos": Vector3(-4.6, 0, -8.6), "req": {"farmer": 1}},
-	"waiter": {"title": "Kellner", "max": 3, "base": 220.0, "growth": 2.6, "pos": Vector3(8.3, 0, -0.4), "req": {"cashier": 1}},
-	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 140.0, "growth": 2.0, "pos": Vector3(8.3, 0, 3.4), "req": {"cashier": 1}},
-	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(3.5, 0, -5.0), "req": {"waiter": 1}},
-	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 300.0, "growth": 1.7, "pos": Vector3(8.3, 0, -8.6), "req": {"pasta": 1}},
-	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(8.3, 0, 7.2), "req": {"pasta": 1}},
-	"mower": {"title": "Erntemaschine (breiter ernten)", "max": 3, "base": 250.0, "growth": 3.0, "pos": Vector3(-8.3, 0, 7.2), "req": {"field": 2}},
-	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.6), "req": {"field": 3, "pasta": 1, "farmer": 3, "waiter": 2, "prices": 3}},
+	"capacity": {"title": "Größerer Korb", "max": 10, "base": 15.0, "growth": 1.55, "pos": Vector3(-4.4, 0, -0.2), "req": {}},
+	"field": {"title": "Feld vergrößern", "max": 3, "base": 40.0, "growth": 2.6, "pos": Vector3(0, 0, -0.2), "req": {"capacity": 1}},
+	"farmer": {"title": "Erntehelfer", "max": 4, "base": 70.0, "growth": 2.4, "pos": Vector3(4.4, 0, -0.2), "req": {"field": 1}},
+	"oven_speed": {"title": "Ofen schneller", "max": 10, "base": 50.0, "growth": 1.7, "pos": Vector3(-6.8, 0, -1.8), "req": {"farmer": 1}},
+	"cashier": {"title": "Kassierer", "max": 1, "base": 160.0, "growth": 1.0, "pos": Vector3(-4.2, 0, -8.4), "req": {"farmer": 1}},
+	"waiter": {"title": "Kellner", "max": 3, "base": 220.0, "growth": 2.6, "pos": Vector3(6.9, 0, -8.4), "req": {"cashier": 1}},
+	"customers": {"title": "Werbeschild: mehr Kunden", "max": 5, "base": 140.0, "growth": 2.0, "pos": Vector3(7.1, 0, 3.0), "req": {"cashier": 1}},
+	"pasta": {"title": "Nudelmaschine", "max": 1, "base": 600.0, "growth": 1.0, "pos": Vector3(2.0, 0, -5.0), "req": {"waiter": 1}},
+	"pasta_speed": {"title": "Nudeln schneller", "max": 10, "base": 300.0, "growth": 1.7, "pos": Vector3(7.1, 0, 6.5), "req": {"pasta": 1}},
+	"prices": {"title": "Bessere Zutaten (+25% Preis)", "max": 10, "base": 450.0, "growth": 1.9, "pos": Vector3(-7.1, 0, 3.0), "req": {"pasta": 1}},
+	"mower": {"title": "Erntemaschine (breiter ernten)", "max": 3, "base": 250.0, "growth": 3.0, "pos": Vector3(-7.1, 0, 6.5), "req": {"field": 2}},
+	"new_location": {"title": "Neuer Standort (Einnahmen x2)", "max": 1, "base": 20000.0, "growth": 1.0, "pos": Vector3(0, 0, -0.2), "req": {"field": 3, "pasta": 1, "farmer": 3, "waiter": 2, "prices": 3}},
 }
 
 var money := 0.0
@@ -83,7 +83,7 @@ func _ready() -> void:
 	_build_world()
 	player = Player.new()
 	player.setup(self)
-	player.position = Vector3(0, 0, -2.5)
+	player.position = Vector3(0.3, 0, -2.0)
 	add_child(player)
 	camera = Camera3D.new()
 	camera.rotation_degrees = Vector3(-56, 0, 0)
@@ -124,7 +124,7 @@ func _process(delta: float) -> void:
 
 
 func _camera_offset() -> Vector3:
-	return Vector3(0, 15.0, 10.0)
+	return Vector3(0, 16.5, 11.0)
 
 
 func clamp_to_map(p: Vector3) -> Vector3:
@@ -472,23 +472,24 @@ func _build_world() -> void:
 	env.background_color = Color(0.62, 0.78, 0.55)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.85, 0.85, 0.9)
-	env.ambient_light_energy = 0.75
+	env.ambient_light_energy = 0.4
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-60, -30, 0)
 	sun.shadow_enabled = true
-	sun.light_energy = 1.0
+	sun.light_energy = 0.85
 	add_child(sun)
 
-	var tint: Color = [Color(0.62, 0.78, 0.5), Color(0.78, 0.75, 0.5), Color(0.55, 0.72, 0.7), Color(0.8, 0.65, 0.55)][stars % 4]
+	var tint: Color = [Color(0.45, 0.68, 0.35), Color(0.78, 0.75, 0.5), Color(0.55, 0.72, 0.7), Color(0.8, 0.65, 0.55)][stars % 4]
 	add_child(Util.box(Vector3(80, 0.1, 80), tint, Vector3(0, -0.06, 0)))
 	# Straße
 	add_child(Util.box(Vector3(60, 0.04, 3.2), Color(0.55, 0.56, 0.6), Vector3(0, 0.0, ROAD_Z)))
 	add_child(Util.box(Vector3(60, 0.05, 0.12), Color(0.95, 0.95, 0.95), Vector3(0, 0.0, ROAD_Z - 1.45)))
 	# Holzboden der Küche
-	add_child(Util.box(Vector3(22, 0.06, 11.5), Color(0.85, 0.7, 0.5), Vector3(0, 0.0, -6.0)))
+	add_child(Util.box(Vector3(22, 0.06, 11.5), Color(0.72, 0.55, 0.38), Vector3(0, 0.0, -6.0)))
 	# Büsche als Deko
 	for i in 14:
 		var side := -1.0 if i % 2 == 0 else 1.0
@@ -500,9 +501,9 @@ func _build_world() -> void:
 	field.position = FIELD_POS
 	add_child(field)
 
-	oven = _make_station("oven", "pizza", Vector3(-7.0, 0, -5.0), Color(0.85, 0.35, 0.25))
+	oven = _make_station("oven", "pizza", Vector3(-5.0, 0, -5.0), Color(0.85, 0.35, 0.25))
 	oven.base_time = 1.6
-	pasta_machine = _make_station("pasta", "pasta", Vector3(3.5, 0, -5.0), Color(0.95, 0.8, 0.3))
+	pasta_machine = _make_station("pasta", "pasta", Vector3(2.0, 0, -5.0), Color(0.95, 0.8, 0.3))
 	pasta_machine.base_time = 2.2
 
 	counter = Counter.new()
@@ -515,13 +516,13 @@ func _build_world() -> void:
 	add_child(money_pile)
 
 	arrow = Node3D.new()
-	var shaft := Util.box(Vector3(0.35, 0.7, 0.35), Color(0.5, 0.75, 1.0), Vector3(0, 0.7, 0))
+	var shaft := Util.box(Vector3(0.45, 0.8, 0.45), Color(0.2, 0.55, 1.0), Vector3(0, 0.9, 0))
 	arrow.add_child(shaft)
 	var head := MeshInstance3D.new()
 	var prism := PrismMesh.new()
-	prism.size = Vector3(0.9, 0.6, 0.4)
+	prism.size = Vector3(1.2, 0.8, 0.5)
 	head.mesh = prism
-	head.material_override = Util.mat(Color(0.5, 0.75, 1.0))
+	head.material_override = Util.mat(Color(0.2, 0.55, 1.0))
 	head.rotation_degrees = Vector3(0, 0, 180)
 	head.position = Vector3(0, 0.1, 0)
 	arrow.add_child(head)
